@@ -14,7 +14,7 @@ on:
 
 env:
   DOCKERHUB_REGISTRY: docker.io
-  DOCKERHUB_IMAGE_NAME: sherlocksai/opentelemetry-demo
+  DOCKERHUB_IMAGE_NAME: sherlocksai/otel-demo
 
 jobs:
   build:
