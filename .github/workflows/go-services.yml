@@ -73,7 +73,7 @@ jobs:
       with:
         context: .
         file: src/${{ matrix.service }}/Dockerfile
-        push: true
+        push: ${{ github.ref == 'refs/heads/main' }}
         tags: ${{ env.DOCKERHUB_REGISTRY }}/${{ env.DOCKERHUB_IMAGE_NAME }}-${{ matrix.service }}:latest
         cache-from: type=registry,ref=${{ env.DOCKERHUB_REGISTRY }}/${{ env.DOCKERHUB_IMAGE_NAME }}-${{ matrix.service }}:buildcache
         cache-to: type=registry,ref=${{ env.DOCKERHUB_REGISTRY }}/${{ env.DOCKERHUB_IMAGE_NAME }}-${{ matrix.service }}:buildcache,mode=max 
