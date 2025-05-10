@@ -71,7 +71,8 @@ jobs:
     - name: Build and push Docker image
       uses: docker/build-push-action@v5
       with:
-        context: src/${{ matrix.service }}
+        context: .
+        file: src/${{ matrix.service }}/Dockerfile
         push: true
         tags: ${{ env.DOCKERHUB_REGISTRY }}/${{ env.DOCKERHUB_IMAGE_NAME }}-${{ matrix.service }}:latest
         cache-from: type=registry,ref=${{ env.DOCKERHUB_REGISTRY }}/${{ env.DOCKERHUB_IMAGE_NAME }}-${{ matrix.service }}:buildcache
