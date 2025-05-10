@@ -214,12 +214,12 @@ func main() {
 	svc.productCatalogSvcClient = pb.NewProductCatalogServiceClient(c)
 	defer c.Close()
 
-	mustMapEnv(&svc.cartSvcAddr, "CART_ADDR")
+	mustMapEnv(&svc.cartSvcAddr, "CART_ADD")
 	c = mustCreateClient(svc.cartSvcAddr)
 	svc.cartSvcClient = pb.NewCartServiceClient(c)
 	defer c.Close()
 
-	mustMapEnv(&svc.currencySvcAddr, "CURRENCY_ADDR")
+	mustMapEnv(&svc.currencySvcAddr, "CURRENCY_ADD")
 	c = mustCreateClient(svc.currencySvcAddr)
 	svc.currencySvcClient = pb.NewCurrencyServiceClient(c)
 	defer c.Close()
