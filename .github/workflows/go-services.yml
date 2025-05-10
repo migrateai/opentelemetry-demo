@@ -14,7 +14,7 @@ on:
 
 env:
   DOCKERHUB_REGISTRY: docker.io
-  DOCKERHUB_IMAGE_NAME: sherlocksai/otel-demo
+  DOCKERHUB_IMAGE_NAME: sherlocksai/opentelemetry-demo
 
 jobs:
   build:
@@ -73,7 +73,7 @@ jobs:
       with:
         context: .
         file: src/${{ matrix.service }}/Dockerfile
-        push: ${{ github.ref == 'refs/heads/main' }}
+        push: true
         tags: ${{ env.DOCKERHUB_REGISTRY }}/${{ env.DOCKERHUB_IMAGE_NAME }}-${{ matrix.service }}:latest
         cache-from: type=registry,ref=${{ env.DOCKERHUB_REGISTRY }}/${{ env.DOCKERHUB_IMAGE_NAME }}-${{ matrix.service }}:buildcache
         cache-to: type=registry,ref=${{ env.DOCKERHUB_REGISTRY }}/${{ env.DOCKERHUB_IMAGE_NAME }}-${{ matrix.service }}:buildcache,mode=max 
