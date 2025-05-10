@@ -27,6 +27,9 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
     - name: Set up Go
       uses: actions/setup-go@v5
       with:
@@ -71,5 +74,5 @@ jobs:
         context: src/${{ matrix.service }}
         push: true
         tags: ${{ env.DOCKERHUB_REGISTRY }}/${{ env.DOCKERHUB_IMAGE_NAME }}-${{ matrix.service }}:latest
-        cache-from: type=gha
-        cache-to: type=gha,mode=max 
+        cache-from: type=registry,ref=${{ env.DOCKERHUB_REGISTRY }}/${{ env.DOCKERHUB_IMAGE_NAME }}-${{ matrix.service }}:buildcache
+        cache-to: type=registry,ref=${{ env.DOCKERHUB_REGISTRY }}/${{ env.DOCKERHUB_IMAGE_NAME }}-${{ matrix.service }}:buildcache,mode=max 
