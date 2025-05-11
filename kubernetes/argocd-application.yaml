@@ -25,6 +25,13 @@ spec:
     targetRevision: 0.37.6
     helm:
       releaseName: my-otel-demo
+      values: |
+        components:
+          cart:
+            enabled: true
+            envOverrides:
+              - name: VALKEY_ADDR
+                value: https://valkey-cart:6379
       valueFiles:
         - values.yaml
   destination:
