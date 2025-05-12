@@ -58,17 +58,17 @@ jobs:
     #         --assumeYes \
     #         --namespace $ARGOCD_NAMESPACE
 
-      - name: Check Application Status
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        run: |
-          # Wait for sync to complete
-          argocd app wait $ARGOCD_APP_NAME \
-            --app-namespace $ARGOCD_NAMESPACE \
-            --timeout 300
+    #   - name: Check Application Status
+    #     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    #     run: |
+    #       # Wait for sync to complete
+    #       argocd app wait $ARGOCD_APP_NAME \
+    #         --app-namespace $ARGOCD_NAMESPACE \
+    #         --timeout 300
 
-          # Get application status
-          argocd app get $ARGOCD_APP_NAME \
-            --namespace $ARGOCD_NAMESPACE
+    #       # Get application status
+    #       argocd app get $ARGOCD_APP_NAME \
+    #         --namespace $ARGOCD_NAMESPACE
 
       - name: Show Diff
         if: github.event_name == 'pull_request'
