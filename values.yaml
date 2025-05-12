@@ -3,7 +3,7 @@ components:
     enabled: true
     imageOverride:
       repository: sherlocksai/otel-demo-checkout
-      tag: latest
+      tag: latesst
       pullPolicy: Always
   product-catalog:
     enabled: true
