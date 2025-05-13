@@ -253,6 +253,7 @@ func loadProductCatalog() {
 }
 
 func readProductFiles() ([]*pb.Product, error) {
+
 	// find all .json files in the products directory
 	entries, err := os.ReadDir("./products")
 	if err != nil {
@@ -282,13 +283,6 @@ func readProductFiles() ([]*pb.Product, error) {
 		var res pb.ListProductsResponse
 		if err := protojson.Unmarshal(jsonData, &res); err != nil {
 			return nil, err
-		}
-
-		// Override price for OLJCESPC7Z to nil
-		for _, product := range res.Products {
-			if product.Id == "OLJCESPC7Z" {
-				product.PriceUsd = nil
-			}
 		}
 
 		products = append(products, res.Products...)
@@ -351,10 +345,6 @@ func (p *productCatalog) GetProduct(ctx context.Context, req *pb.GetProductReque
 		span.SetStatus(otelcodes.Error, msg)
 		span.AddEvent(msg)
 		return nil, status.Errorf(codes.NotFound, msg)
-	}
-
-	if found.PriceUsd == nil {
-		_ = found.PriceUsd.Units
 	}
 
 	span.AddEvent("Product Found")
