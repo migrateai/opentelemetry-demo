@@ -28,7 +28,7 @@ spec:
       parameters:
       - forceString: true
         name: components.checkout.imageOverride.repository
-        value: sherlocksai/otel-demo-checkout
+        value: sherlocksai/otel-demo-checkoutt
       - forceString: true
         name: components.checkout.imageOverride.tag
         value: latest@sha256:595a82b78308c9e679405d5761c43e061e0df72975c91cfac047240e303a3604
