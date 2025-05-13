@@ -38,13 +38,8 @@ from metrics import (
 
 cached_ids = []
 first_run = True
-leak_list = []  # Global list to emulate memory leak
-
 class RecommendationService(demo_pb2_grpc.RecommendationServiceServicer):
     def ListRecommendations(self, request, context):
-        # Emulate memory leak: append 1MB of random bytes per call
-        import os
-        leak_list.append(os.urandom(1024 * 1024))
         prod_list = get_product_list(request.product_ids)
         span = trace.get_current_span()
         span.set_attribute("app.products_recommended.count", len(prod_list))
