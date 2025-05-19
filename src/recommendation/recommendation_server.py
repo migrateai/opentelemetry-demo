@@ -38,6 +38,8 @@ from metrics import (
 
 cached_ids = []
 first_run = True
+global_recommendations_list = []  # Save global recommendations list for next run
+
 class RecommendationService(demo_pb2_grpc.RecommendationServiceServicer):
     def ListRecommendations(self, request, context):
         prod_list = get_product_list(request.product_ids)
@@ -48,6 +50,7 @@ class RecommendationService(demo_pb2_grpc.RecommendationServiceServicer):
         # build and return response
         response = demo_pb2.ListRecommendationsResponse()
         response.product_ids.extend(prod_list)
+        global_recommendations_list.extend(prod_list)
 
         # Collect metrics for this service
         rec_svc_metrics["app_recommendations_counter"].add(len(prod_list), {'recommendation.type': 'catalog'})
