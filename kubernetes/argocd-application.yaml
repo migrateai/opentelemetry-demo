@@ -28,7 +28,7 @@ spec:
       parameters:
         - forceString: true
           name: components.checkout.imageOverride.repository
-          value: sherlocksai/otel-demo-checkout
+          value: sherlocksai/otel-demo-checkout-service
         - forceString: true
           name: components.checkout.imageOverride.tag
           value: latest
@@ -59,6 +59,13 @@ spec:
         - forceString: true
           name: components.cart.imageOverride.tag
           value: latest
+      values: |
+        components:
+          cart:
+            enabled: true
+            envOverrides:
+              - name: VALKEY_ADDR
+                value: valkey-cart-service:6379
         - forceString: true
           name: components.cart.imageOverride.pullPolicy
           value: Always
