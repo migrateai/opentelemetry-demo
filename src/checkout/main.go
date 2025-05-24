@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/metric"
 	semconv "go.opentelemetry.io/otel/semconv/v1.24.0"
 	"go.opentelemetry.io/otel/trace"
 
@@ -60,6 +61,15 @@ var (
 	tracer      trace.Tracer
 	resource    *sdkresource.Resource
 	initResOnce sync.Once
+	meter       metric.Meter
+	// Performance metrics
+	placeOrderHistogram   metric.Float64Histogram
+	prepareOrderHistogram metric.Float64Histogram
+	chargeCardHistogram   metric.Float64Histogram
+	shipOrderHistogram    metric.Float64Histogram
+	// Error metrics
+	errorCounter          metric.Int64Counter
+	unhandledErrorCounter metric.Int64Counter
 )
 
 func init() {
@@ -154,6 +164,42 @@ func initMeterProvider() *sdkmetric.MeterProvider {
 		sdkmetric.WithResource(initResource()),
 	)
 	otel.SetMeterProvider(mp)
+
+	// Initialize meter for custom metrics
+	meter = mp.Meter("checkout")
+
+	// Initialize histograms for performance metrics
+	placeOrderHistogram, _ = meter.Float64Histogram(
+		"checkout.place_order.duration",
+		metric.WithDescription("Duration of PlaceOrder operation in milliseconds"),
+		metric.WithUnit("ms"),
+	)
+	prepareOrderHistogram, _ = meter.Float64Histogram(
+		"checkout.prepare_order.duration",
+		metric.WithDescription("Duration of prepareOrderItemsAndShippingQuoteFromCart operation in milliseconds"),
+		metric.WithUnit("ms"),
+	)
+	chargeCardHistogram, _ = meter.Float64Histogram(
+		"checkout.charge_card.duration",
+		metric.WithDescription("Duration of chargeCard operation in milliseconds"),
+		metric.WithUnit("ms"),
+	)
+	shipOrderHistogram, _ = meter.Float64Histogram(
+		"checkout.ship_order.duration",
+		metric.WithDescription("Duration of shipOrder operation in milliseconds"),
+		metric.WithUnit("ms"),
+	)
+
+	// Initialize error counters
+	errorCounter, _ = meter.Int64Counter(
+		"checkout.errors.total",
+		metric.WithDescription("Total number of handled errors"),
+	)
+	unhandledErrorCounter, _ = meter.Int64Counter(
+		"checkout.errors.unhandled",
+		metric.WithDescription("Total number of unhandled errors"),
+	)
+
 	return mp
 }
 
@@ -282,6 +328,12 @@ func (cs *checkout) Watch(req *healthpb.HealthCheckRequest, ws healthpb.Health_W
 }
 
 func (cs *checkout) PlaceOrder(ctx context.Context, req *pb.PlaceOrderRequest) (*pb.PlaceOrderResponse, error) {
+	startTime := time.Now()
+	defer func() {
+		duration := float64(time.Since(startTime).Microseconds()) / 1000.0 // Convert to milliseconds
+		placeOrderHistogram.Record(ctx, duration)
+	}()
+
 	span := trace.SpanFromContext(ctx)
 	span.SetAttributes(
 		attribute.String("app.user.id", req.UserId),
@@ -295,6 +347,7 @@ func (cs *checkout) PlaceOrder(ctx context.Context, req *pb.PlaceOrderRequest) (
 	defer func() {
 		if err != nil {
 			span.AddEvent("error", trace.WithAttributes(semconv.ExceptionMessageKey.String(err.Error())))
+			errorCounter.Add(ctx, 1)
 		}
 	}()
 
@@ -380,6 +433,11 @@ type orderPrep struct {
 }
 
 func (cs *checkout) prepareOrderItemsAndShippingQuoteFromCart(ctx context.Context, userID, userCurrency string, address *pb.Address) (orderPrep, error) {
+	startTime := time.Now()
+	defer func() {
+		duration := float64(time.Since(startTime).Microseconds()) / 1000.0 // Convert to milliseconds
+		prepareOrderHistogram.Record(ctx, duration)
+	}()
 
 	ctx, span := tracer.Start(ctx, "prepareOrderItemsAndShippingQuoteFromCart")
 	defer span.End()
@@ -387,18 +445,22 @@ func (cs *checkout) prepareOrderItemsAndShippingQuoteFromCart(ctx context.Contex
 	var out orderPrep
 	cartItems, err := cs.getUserCart(ctx, userID)
 	if err != nil {
+		errorCounter.Add(ctx, 1)
 		return out, fmt.Errorf("cart failure: %+v", err)
 	}
 	orderItems, err := cs.prepOrderItems(ctx, cartItems, userCurrency)
 	if err != nil {
+		errorCounter.Add(ctx, 1)
 		return out, fmt.Errorf("failed to prepare order: %+v", err)
 	}
 	shippingUSD, err := cs.quoteShipping(ctx, address, cartItems)
 	if err != nil {
+		errorCounter.Add(ctx, 1)
 		return out, fmt.Errorf("shipping quote failure: %+v", err)
 	}
 	shippingPrice, err := cs.convertCurrency(ctx, shippingUSD, userCurrency)
 	if err != nil {
+		errorCounter.Add(ctx, 1)
 		return out, fmt.Errorf("failed to convert shipping cost to currency: %+v", err)
 	}
 
@@ -488,6 +550,12 @@ func (cs *checkout) convertCurrency(ctx context.Context, from *pb.Money, toCurre
 }
 
 func (cs *checkout) chargeCard(ctx context.Context, amount *pb.Money, paymentInfo *pb.CreditCardInfo) (string, error) {
+	startTime := time.Now()
+	defer func() {
+		duration := float64(time.Since(startTime).Microseconds()) / 1000.0 // Convert to milliseconds
+		chargeCardHistogram.Record(ctx, duration)
+	}()
+
 	paymentService := cs.paymentSvcClient
 	if cs.isFeatureFlagEnabled(ctx, "paymentUnreachable") {
 		badAddress := "badAddress:50051"
@@ -500,6 +568,7 @@ func (cs *checkout) chargeCard(ctx context.Context, amount *pb.Money, paymentInf
 		CreditCard: paymentInfo})
 	if err != nil {
 		log.Error("could not charge the card", "error", err)
+		errorCounter.Add(ctx, 1)
 		return "", fmt.Errorf("could not charge the card: %+v", err)
 	}
 	return paymentResp.GetTransactionId(), nil
@@ -530,10 +599,17 @@ func (cs *checkout) sendOrderConfirmation(ctx context.Context, email string, ord
 }
 
 func (cs *checkout) shipOrder(ctx context.Context, address *pb.Address, items []*pb.CartItem) (string, error) {
+	startTime := time.Now()
+	defer func() {
+		duration := float64(time.Since(startTime).Microseconds()) / 1000.0 // Convert to milliseconds
+		shipOrderHistogram.Record(ctx, duration)
+	}()
+
 	resp, err := cs.shippingSvcClient.ShipOrder(ctx, &pb.ShipOrderRequest{
 		Address: address,
 		Items:   items})
 	if err != nil {
+		errorCounter.Add(ctx, 1)
 		return "", fmt.Errorf("shipment failed: %+v", err)
 	}
 	return resp.GetTrackingId(), nil
