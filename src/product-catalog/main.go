@@ -19,7 +19,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/newrelic/go-agent/v3/newrelic"
 	"github.com/sirupsen/logrus"
 
 	"go.opentelemetry.io/contrib/bridges/otellogrus"
@@ -31,6 +30,7 @@ import (
 	"go.opentelemetry.io/otel/exporters/otlp/otlplog/otlploggrpc"
 	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
+	"go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/propagation"
 	otellog "go.opentelemetry.io/otel/sdk/log"
 	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
@@ -56,7 +56,14 @@ var (
 	catalog     []*pb.Product
 	resource    *sdkresource.Resource
 	initResOnce sync.Once
-	nrApp       *newrelic.Application
+	meter       metric.Meter
+	// Performance metrics
+	listProductsHistogram   metric.Float64Histogram
+	getProductHistogram     metric.Float64Histogram
+	searchProductsHistogram metric.Float64Histogram
+	// Error metrics
+	errorCounter          metric.Int64Counter
+	unhandledErrorCounter metric.Int64Counter
 )
 
 const DEFAULT_RELOAD_INTERVAL = 10
@@ -154,22 +161,41 @@ func initMeterProvider() *sdkmetric.MeterProvider {
 		sdkmetric.WithResource(initResource()),
 	)
 	otel.SetMeterProvider(mp)
+
+	// Initialize meter for custom metrics
+	meter = mp.Meter("product-catalog")
+
+	// Initialize histograms for performance metrics
+	listProductsHistogram, _ = meter.Float64Histogram(
+		"product_catalog.list_products.duration",
+		metric.WithDescription("Duration of ListProducts operation in milliseconds"),
+		metric.WithUnit("ms"),
+	)
+	getProductHistogram, _ = meter.Float64Histogram(
+		"product_catalog.get_product.duration",
+		metric.WithDescription("Duration of GetProduct operation in milliseconds"),
+		metric.WithUnit("ms"),
+	)
+	searchProductsHistogram, _ = meter.Float64Histogram(
+		"product_catalog.search_products.duration",
+		metric.WithDescription("Duration of SearchProducts operation in milliseconds"),
+		metric.WithUnit("ms"),
+	)
+
+	// Initialize error counters
+	errorCounter, _ = meter.Int64Counter(
+		"product_catalog.errors.total",
+		metric.WithDescription("Total number of handled errors"),
+	)
+	unhandledErrorCounter, _ = meter.Int64Counter(
+		"product_catalog.errors.unhandled",
+		metric.WithDescription("Total number of unhandled errors"),
+	)
+
 	return mp
 }
 
 func main() {
-	// Initialize New Relic
-	var err error
-	nrApp, err = newrelic.NewApplication(
-		newrelic.ConfigAppName("Product Catalog"),
-		newrelic.ConfigLicense(os.Getenv("NEW_RELIC_LICENSE_KEY")),
-		newrelic.ConfigAppLogForwardingEnabled(true),
-	)
-	if err != nil {
-		log.Fatalf("Failed to initialize New Relic: %v", err)
-	}
-	defer nrApp.Shutdown(10 * time.Second)
-
 	tp := initTracerProvider()
 	defer func() {
 		if err := tp.Shutdown(context.Background()); err != nil {
@@ -185,8 +211,9 @@ func main() {
 		}
 		log.Println("Shutdown meter provider")
 	}()
+
 	openfeature.AddHooks(otelhooks.NewTracesHook())
-	err = openfeature.SetProvider(flagd.NewProvider())
+	err := openfeature.SetProvider(flagd.NewProvider())
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -330,31 +357,51 @@ func (p *productCatalog) Watch(req *healthpb.HealthCheckRequest, ws healthpb.Hea
 }
 
 func (p *productCatalog) ListProducts(ctx context.Context, req *pb.Empty) (*pb.ListProductsResponse, error) {
-	txn := nrApp.StartTransaction("ListProducts")
-	defer txn.End()
+	startTime := time.Now()
+	defer func() {
+		duration := float64(time.Since(startTime).Microseconds()) / 1000.0 // Convert to milliseconds
+		listProductsHistogram.Record(ctx, duration)
+	}()
 
 	span := trace.SpanFromContext(ctx)
 	span.SetAttributes(
 		attribute.Int("app.products.count", len(catalog)),
 	)
+
+	// Record metrics
+	productsCounter, _ := meter.Int64Counter("product_catalog.list_products.count")
+	productsCounter.Add(ctx, 1)
+
 	return &pb.ListProductsResponse{Products: catalog}, nil
 }
 
 func (p *productCatalog) GetProduct(ctx context.Context, req *pb.GetProductRequest) (*pb.Product, error) {
-	txn := nrApp.StartTransaction("GetProduct")
-	defer txn.End()
+	startTime := time.Now()
+	defer func() {
+		duration := float64(time.Since(startTime).Microseconds()) / 1000.0 // Convert to milliseconds
+		getProductHistogram.Record(ctx, duration)
+	}()
 
 	span := trace.SpanFromContext(ctx)
 	span.SetAttributes(
 		attribute.String("app.product.id", req.Id),
 	)
 
+	// Record metrics
+	productCounter, _ := meter.Int64Counter("product_catalog.get_product.count")
+	productCounter.Add(ctx, 1)
+
 	// GetProduct will fail on a specific product when feature flag is enabled
 	if p.checkProductFailure(ctx, req.Id) {
 		msg := fmt.Sprintf("Error: Product Catalog Fail Feature Flag Enabled")
 		span.SetStatus(otelcodes.Error, msg)
 		span.AddEvent(msg)
-		txn.NoticeError(fmt.Errorf(msg))
+
+		// Record error metrics
+		errorCounter.Add(ctx, 1)
+		errorCounter, _ := meter.Int64Counter("product_catalog.get_product.errors")
+		errorCounter.Add(ctx, 1)
+
 		return nil, status.Errorf(codes.Internal, msg)
 	}
 
@@ -370,7 +417,12 @@ func (p *productCatalog) GetProduct(ctx context.Context, req *pb.GetProductReque
 		msg := fmt.Sprintf("Product Not Found: %s", req.Id)
 		span.SetStatus(otelcodes.Error, msg)
 		span.AddEvent(msg)
-		txn.NoticeError(fmt.Errorf(msg))
+
+		// Record error metrics
+		errorCounter.Add(ctx, 1)
+		notFoundCounter, _ := meter.Int64Counter("product_catalog.get_product.not_found")
+		notFoundCounter.Add(ctx, 1)
+
 		return nil, status.Errorf(codes.NotFound, msg)
 	}
 
@@ -383,10 +435,17 @@ func (p *productCatalog) GetProduct(ctx context.Context, req *pb.GetProductReque
 }
 
 func (p *productCatalog) SearchProducts(ctx context.Context, req *pb.SearchProductsRequest) (*pb.SearchProductsResponse, error) {
-	txn := nrApp.StartTransaction("SearchProducts")
-	defer txn.End()
+	startTime := time.Now()
+	defer func() {
+		duration := float64(time.Since(startTime).Microseconds()) / 1000.0 // Convert to milliseconds
+		searchProductsHistogram.Record(ctx, duration)
+	}()
 
 	span := trace.SpanFromContext(ctx)
+
+	// Record metrics
+	searchCounter, _ := meter.Int64Counter("product_catalog.search_products.count")
+	searchCounter.Add(ctx, 1)
 
 	var result []*pb.Product
 	for _, product := range catalog {
@@ -395,9 +454,16 @@ func (p *productCatalog) SearchProducts(ctx context.Context, req *pb.SearchProdu
 			result = append(result, product)
 		}
 	}
+
 	span.SetAttributes(
 		attribute.Int("app.products_search.count", len(result)),
+		attribute.String("app.products_search.query", req.Query),
 	)
+
+	// Record search results metric
+	searchResultsCounter, _ := meter.Int64Counter("product_catalog.search_products.results")
+	searchResultsCounter.Add(ctx, int64(len(result)))
+
 	return &pb.SearchProductsResponse{Results: result}, nil
 }
 
