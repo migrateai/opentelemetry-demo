@@ -64,6 +64,11 @@ var (
 	// Error metrics
 	errorCounter          metric.Int64Counter
 	unhandledErrorCounter metric.Int64Counter
+	// Request counters
+	productsCounter      metric.Int64Counter
+	productCounter       metric.Int64Counter
+	searchCounter        metric.Int64Counter
+	searchResultsCounter metric.Int64Counter
 )
 
 const DEFAULT_RELOAD_INTERVAL = 10
@@ -190,6 +195,24 @@ func initMeterProvider() *sdkmetric.MeterProvider {
 	unhandledErrorCounter, _ = meter.Int64Counter(
 		"product_catalog.errors.unhandled",
 		metric.WithDescription("Total number of unhandled errors"),
+	)
+
+	// Initialize request counters
+	productsCounter, _ = meter.Int64Counter(
+		"product_catalog.list_products.count",
+		metric.WithDescription("Total number of ListProducts calls"),
+	)
+	productCounter, _ = meter.Int64Counter(
+		"product_catalog.get_product.count",
+		metric.WithDescription("Total number of GetProduct calls"),
+	)
+	searchCounter, _ = meter.Int64Counter(
+		"product_catalog.search_products.count",
+		metric.WithDescription("Total number of SearchProducts calls"),
+	)
+	searchResultsCounter, _ = meter.Int64Counter(
+		"product_catalog.search_products.results",
+		metric.WithDescription("Total number of search results returned"),
 	)
 
 	return mp
@@ -368,8 +391,7 @@ func (p *productCatalog) ListProducts(ctx context.Context, req *pb.Empty) (*pb.L
 		attribute.Int("app.products.count", len(catalog)),
 	)
 
-	// Record metrics
-	productsCounter, _ := meter.Int64Counter("product_catalog.list_products.count")
+	// Use the pre-initialized counter
 	productsCounter.Add(ctx, 1)
 
 	return &pb.ListProductsResponse{Products: catalog}, nil
@@ -388,7 +410,7 @@ func (p *productCatalog) GetProduct(ctx context.Context, req *pb.GetProductReque
 	)
 
 	// Record metrics
-	productCounter, _ := meter.Int64Counter("product_catalog.get_product.count")
+	productCounter, _ = meter.Int64Counter("product_catalog.get_product.count")
 	productCounter.Add(ctx, 1)
 
 	// GetProduct will fail on a specific product when feature flag is enabled
@@ -399,7 +421,7 @@ func (p *productCatalog) GetProduct(ctx context.Context, req *pb.GetProductReque
 
 		// Record error metrics
 		errorCounter.Add(ctx, 1)
-		errorCounter, _ := meter.Int64Counter("product_catalog.get_product.errors")
+		errorCounter, _ = meter.Int64Counter("product_catalog.get_product.errors")
 		errorCounter.Add(ctx, 1)
 
 		return nil, status.Errorf(codes.Internal, msg)
@@ -444,7 +466,7 @@ func (p *productCatalog) SearchProducts(ctx context.Context, req *pb.SearchProdu
 	span := trace.SpanFromContext(ctx)
 
 	// Record metrics
-	searchCounter, _ := meter.Int64Counter("product_catalog.search_products.count")
+	searchCounter, _ = meter.Int64Counter("product_catalog.search_products.count")
 	searchCounter.Add(ctx, 1)
 
 	var result []*pb.Product
@@ -461,7 +483,7 @@ func (p *productCatalog) SearchProducts(ctx context.Context, req *pb.SearchProdu
 	)
 
 	// Record search results metric
-	searchResultsCounter, _ := meter.Int64Counter("product_catalog.search_products.results")
+	searchResultsCounter, _ = meter.Int64Counter("product_catalog.search_products.results")
 	searchResultsCounter.Add(ctx, int64(len(result)))
 
 	return &pb.SearchProductsResponse{Results: result}, nil
