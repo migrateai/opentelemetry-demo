@@ -68,8 +68,13 @@ var (
 	chargeCardHistogram   metric.Float64Histogram
 	shipOrderHistogram    metric.Float64Histogram
 	// Error metrics
-	errorCounter          metric.Int64Counter
-	unhandledErrorCounter metric.Int64Counter
+	errorCounter metric.Int64Counter
+	// Request counters
+	paymentErrorsCounter    metric.Int64Counter
+	shippingErrorsCounter   metric.Int64Counter
+	cartErrorsCounter       metric.Int64Counter
+	currencyErrorsCounter   metric.Int64Counter
+	orderConfirmationErrors metric.Int64Counter
 )
 
 func init() {
@@ -195,9 +200,27 @@ func initMeterProvider() *sdkmetric.MeterProvider {
 		"checkout.errors.total",
 		metric.WithDescription("Total number of handled errors"),
 	)
-	unhandledErrorCounter, _ = meter.Int64Counter(
-		"checkout.errors.unhandled",
-		metric.WithDescription("Total number of unhandled errors"),
+
+	// Initialize request-specific error counters
+	paymentErrorsCounter, _ = meter.Int64Counter(
+		"checkout.payment.errors",
+		metric.WithDescription("Total number of payment errors"),
+	)
+	shippingErrorsCounter, _ = meter.Int64Counter(
+		"checkout.shipping.errors",
+		metric.WithDescription("Total number of shipping errors"),
+	)
+	cartErrorsCounter, _ = meter.Int64Counter(
+		"checkout.cart.errors",
+		metric.WithDescription("Total number of cart errors"),
+	)
+	currencyErrorsCounter, _ = meter.Int64Counter(
+		"checkout.currency.errors",
+		metric.WithDescription("Total number of currency conversion errors"),
+	)
+	orderConfirmationErrors, _ = meter.Int64Counter(
+		"checkout.order_confirmation.errors",
+		metric.WithDescription("Total number of order confirmation errors"),
 	)
 
 	return mp
@@ -508,6 +531,8 @@ func (cs *checkout) quoteShipping(ctx context.Context, address *pb.Address, item
 func (cs *checkout) getUserCart(ctx context.Context, userID string) ([]*pb.CartItem, error) {
 	cart, err := cs.cartSvcClient.GetCart(ctx, &pb.GetCartRequest{UserId: userID})
 	if err != nil {
+		errorCounter.Add(ctx, 1)
+		cartErrorsCounter.Add(ctx, 1)
 		return nil, fmt.Errorf("failed to get user cart during checkout: %+v", err)
 	}
 	return cart.GetItems(), nil
@@ -544,6 +569,8 @@ func (cs *checkout) convertCurrency(ctx context.Context, from *pb.Money, toCurre
 		From:   from,
 		ToCode: toCurrency})
 	if err != nil {
+		errorCounter.Add(ctx, 1)
+		currencyErrorsCounter.Add(ctx, 1)
 		return nil, fmt.Errorf("failed to convert currency: %+v", err)
 	}
 	return result, err
@@ -569,6 +596,7 @@ func (cs *checkout) chargeCard(ctx context.Context, amount *pb.Money, paymentInf
 	if err != nil {
 		log.Error("could not charge the card", "error", err)
 		errorCounter.Add(ctx, 1)
+		paymentErrorsCounter.Add(ctx, 1)
 		return "", fmt.Errorf("could not charge the card: %+v", err)
 	}
 	return paymentResp.GetTransactionId(), nil
@@ -581,17 +609,23 @@ func (cs *checkout) sendOrderConfirmation(ctx context.Context, email string, ord
 	})
 	if err != nil {
 		log.Error("failed to marshal order to JSON", "error", err)
+		errorCounter.Add(ctx, 1)
+		orderConfirmationErrors.Add(ctx, 1)
 		return fmt.Errorf("failed to marshal order to JSON: %+v", err)
 	}
 
 	resp, err := otelhttp.Post(ctx, cs.emailSvcAddr+"/send_order_confirmation", "application/json", bytes.NewBuffer(emailPayload))
 	if err != nil {
 		log.Error("failed POST to email service", "error", err)
+		errorCounter.Add(ctx, 1)
+		orderConfirmationErrors.Add(ctx, 1)
 		return fmt.Errorf("failed POST to email service: %+v", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
+		errorCounter.Add(ctx, 1)
+		orderConfirmationErrors.Add(ctx, 1)
 		return fmt.Errorf("failed POST to email service: expected 200, got %d", resp.StatusCode)
 	}
 
@@ -610,6 +644,7 @@ func (cs *checkout) shipOrder(ctx context.Context, address *pb.Address, items []
 		Items:   items})
 	if err != nil {
 		errorCounter.Add(ctx, 1)
+		shippingErrorsCounter.Add(ctx, 1)
 		return "", fmt.Errorf("shipment failed: %+v", err)
 	}
 	return resp.GetTrackingId(), nil
