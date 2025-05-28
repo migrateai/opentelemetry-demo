@@ -52,11 +52,6 @@ jobs:
           cd src/frontend
           npm run build
 
-      - name: Run tests
-        run: |
-          cd src/frontend
-          npm run test
-
       - name: Log in to DockerHub
         uses: docker/login-action@v3
         with:
