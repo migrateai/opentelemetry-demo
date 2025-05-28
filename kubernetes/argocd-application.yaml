@@ -5,7 +5,7 @@ metadata:
   namespace: argocd
   # TODO: Enable image updater
   annotations:
-    argocd-image-updater.argoproj.io/image-list: checkout=sherlocksai/otel-demo-checkout:latest,product-catalog=sherlocksai/otel-demo-product-catalog:latest
+    argocd-image-updater.argoproj.io/image-list: checkout=sherlocksai/otel-demo-checkout:latest,product-catalog=sherlocksai/otel-demo-product-catalog:latest,load-generator=sherlocksai/otel-demo-load-generator:latest
     argocd-image-updater.argoproj.io/checkout.update-strategy: digest
     argocd-image-updater.argoproj.io/checkout.force-update: "true"
     argocd-image-updater.argoproj.io/checkout.pull-secret: pullsecret:argocd/argocd-image-updater-secret
@@ -16,6 +16,11 @@ metadata:
     argocd-image-updater.argoproj.io/product-catalog.pull-secret: pullsecret:argocd/argocd-image-updater-secret
     argocd-image-updater.argoproj.io/product-catalog.helm.image-name: components.product-catalog.imageOverride.repository
     argocd-image-updater.argoproj.io/product-catalog.helm.image-tag: components.product-catalog.imageOverride.tag
+    argocd-image-updater.argoproj.io/load-generator.update-strategy: digest
+    argocd-image-updater.argoproj.io/load-generator.force-update: "true"
+    argocd-image-updater.argoproj.io/load-generator.pull-secret: pullsecret:argocd/argocd-image-updater-secret
+    argocd-image-updater.argoproj.io/load-generator.helm.image-name: components.load-generator.imageOverride.repository
+    argocd-image-updater.argoproj.io/load-generator.helm.image-tag: components.load-generator.imageOverride.tag
     argocd-image-updater.argoproj.io/write-back-method: argocd
 spec:
   project: default
@@ -62,11 +67,25 @@ spec:
         - forceString: true
           name: components.cart.imageOverride.pullPolicy
           value: Always
+        - forceString: true
+          name: components.load-generator.imageOverride.repository
+          value: sherlocksai/otel-demo-load-generator
+        - forceString: true
+          name: components.load-generator.imageOverride.tag
+          value: latest
+        - forceString: true
+          name: components.load-generator.imageOverride.pullPolicy
+          value: Always
       values: |
         components:
           frontend:
             imageOverride:
               repository: sherlocksai/otel-demo-frontend
+              tag: latest
+              pullPolicy: Always
+          load-generator:
+            imageOverride:
+              repository: sherlocksai/otel-demo-load-generator
               tag: latest
               pullPolicy: Always
           product-catalog:
