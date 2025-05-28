@@ -4,14 +4,17 @@
 FROM node:22-alpine AS builder
 RUN apk add --no-cache libc6-compat
 
-USER node
-
 WORKDIR /app
 
 COPY ./src/frontend/package*.json ./
 RUN npm clean-install --no-audit --no-progress
 COPY ./src/frontend/protos ./protos
 COPY ./src/frontend .
+
+# Create .next directory with proper permissions
+RUN mkdir -p .next && chown -R node:node /app
+
+USER node
 
 RUN npm run build
 

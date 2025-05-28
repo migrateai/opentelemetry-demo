@@ -64,7 +64,18 @@ spec:
           value: Always
       values: |
         components:
+          frontend:
+            imageOverride:
+              repository: sherlocksai/otel-demo-frontend
+              tag: latest
+              pullPolicy: Always
           product-catalog:
+            resources:
+              limits:
+                memory: 250Mi
+              requests:
+                memory: 100Mi
+                cpu: 20m
             envOverrides:
               - name: NEW_RELIC_LICENSE_KEY
                 valueFrom:
