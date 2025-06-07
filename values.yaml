@@ -1,11 +1,22 @@
 components:
+  frontend:
+    imageOverride:
+      repository: sherlocksai/otel-demo-frontend
+      tag: latest
+      pullPolicy: Always
+  load-generator:
+    imageOverride:
+      repository: sherlocksai/otel-demo-load-generator
+      tag: latest
+      pullPolicy: Always
   product-catalog:
-    envOverrides:
-      - name: NEW_RELIC_LICENSE_KEY
-        valueFrom:
-          secretKeyRef:
-            name: new-relic-license-key
-            key: license-key
+    resources:
+      limits:
+        memory: 250Mi
+      requests:
+        memory: 100Mi
+        cpu: 20m
+
 prometheus:
   server:
     resources:
@@ -22,7 +33,8 @@ prometheus:
           evaluation_interval: 15s
     persistentVolume:
       enabled: true
-      existingClaim: prometheus
+      size: 10Gi
+      storageClass: gp2
       mountPath: /data
       subPath: ""
     emptyDir: {}
@@ -33,6 +45,9 @@ prometheus:
     extraConfigmapMounts: []
     extraSecretMounts: []
     extraHostPathMounts: []
+
+
+
 opentelemetry-collector:
   enabled: true
   image:
@@ -84,8 +99,7 @@ opentelemetry-collector:
           endpoint: http://opensearch:9200
           tls:
             insecure: true
-      # Add SignOz exporter
-      signoz:
+      otlp/signoz:
         endpoint: signoz-otel-collector.signoz:4317
         tls:
           insecure: true
@@ -110,15 +124,17 @@ opentelemetry-collector:
     service:
       pipelines:
         traces:
+          receivers: [otlp]
           processors: [memory_limiter, resource, transform, batch]
-          exporters: [otlp, debug, spanmetrics, signoz]  # Added signoz
+          exporters: [otlp, otlp/signoz, debug, spanmetrics]
         metrics:
           receivers: [httpcheck/frontend-proxy, redis, otlp, spanmetrics]
           processors: [memory_limiter, resource, batch]
-          exporters: [otlphttp/prometheus, debug, signoz]  # Added signoz
+          exporters: [otlphttp/prometheus, otlp/signoz, debug]
         logs:
+          receivers: [otlp]
           processors: [memory_limiter, resource, batch]
-          exporters: [opensearch, debug, signoz]  # Added signoz
+          exporters: [opensearch, otlp/signoz, debug]
       telemetry:
         metrics:
           level: detailed
