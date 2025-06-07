@@ -1,0 +1,41 @@
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: otel-frontend
+  namespace: lyrid-016d2205-3e0f-4ef0-aa64-d7debe01f0b1
+spec:
+  gateways:
+  - istio-system/public-gateway
+  hosts:
+  - otel-demo.sherlocks.cloud
+  http:
+  - headers:
+      response:
+        add:
+          X-servicename: frontend-proxy
+          x-env: oteldemo
+    route:
+    - destination:
+        host: frontend-proxy.lyrid-016d2205-3e0f-4ef0-aa64-d7debe01f0b1.svc.cluster.local
+        port:
+          number: 8080
+---
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: signoz-virtualservice
+  namespace: signoz
+spec:
+  hosts:
+    - signoz.sherlocks.cloud
+  gateways:
+    - istio-system/public-gateway
+  http:
+    - match:
+        - uri:
+            prefix: /
+      route:
+        - destination:
+            host: signoz.signoz.svc.cluster.local
+            port:
+              number: 8080  # Change to the correct port for Signoz UI

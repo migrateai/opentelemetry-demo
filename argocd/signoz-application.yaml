@@ -32,7 +32,7 @@ spec:
           enabled: true
           persistence:
             enabled: true
-            storageClass: "longhorn"
+            storageClass: "gp2"
             size: 20Gi
             accessMode: ReadWriteOnce
           resources:

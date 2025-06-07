@@ -76,12 +76,6 @@ spec:
               requests:
                 memory: 100Mi
                 cpu: 20m
-            envOverrides:
-              - name: NEW_RELIC_LICENSE_KEY
-                valueFrom:
-                  secretKeyRef:
-                    name: new-relic-license-key
-                    key: license-key
 
         prometheus:
           server:
@@ -99,7 +93,8 @@ spec:
                   evaluation_interval: 15s
             persistentVolume:
               enabled: true
-              existingClaim: prometheus
+              size: 10Gi
+              storageClass: gp2
               mountPath: /data
               subPath: ""
             emptyDir: {}

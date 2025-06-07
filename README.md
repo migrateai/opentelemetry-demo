@@ -141,3 +141,61 @@ Emeritus:
 [Teletrace]: https://github.com/teletrace/opentelemetry-demo
 [Tracetest]: https://github.com/kubeshop/opentelemetry-demo
 [Uptrace]: https://github.com/uptrace/uptrace/tree/master/example/opentelemetry-demo
+
+
+# Setup:
+
+## EKS Setup
+
+### AccessDenied: Not authorized to perform sts:AssumeRoleWithWebIdentity
+
+```
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Principal": {
+                "Federated": "arn:aws:iam::253490776927:oidc-provider/oidc.eks.us-east-1.amazonaws.com/id/5706F90EDFD8B0575AB062D3356C8AE7"
+            },
+            "Action": "sts:AssumeRoleWithWebIdentity",
+            "Condition": {
+                "StringEquals": {
+                    "oidc.eks.us-east-1.amazonaws.com/id/5706F90EDFD8B0575AB062D3356C8AE7:aud": "sts.amazonaws.com",
+                    "oidc.eks.us-east-1.amazonaws.com/id/5706F90EDFD8B0575AB062D3356C8AE7:sub": "system:serviceaccount:kube-system:ebs-csi-controller-sa"
+                }
+            }
+        }
+    ]
+}
+```
+
+aws iam update-assume-role-policy --role-name otel-demo-aws-eks-addon-ebscsi-role --policy-document file://kubernetes/ebs-csi-trust-policy.json
+
+ArgoCD.internal.shedlocks.cloud is pointing to the internal load balancer while signoz.shedlocks.cloud and otel-demo.shedlocks.cloud is pointing to the public load balancer.
+
+Created the VirtualServices for signoz and otel-demo from kubernetes/otel-frontend-vs.yaml
+
+### Unable to access the EKS cluster using kubectl despite having AdministratorAccess IAM permissions.
+
+#### Root Cause Analysis:
+- The IAM user had AWS-level permissions (AdministratorAccess)
+- However, the aws-auth ConfigMap in the EKS cluster didn't have any user mappings
+- Only the node group role was mapped in the ConfigMap
+- This meant that even though the user had AWS permissions, they weren't mapped to any Kubernetes RBAC roles
+
+#### Solution:
+- We identified that we needed to add the IAM user to the aws-auth ConfigMap
+- The ConfigMap needed to be updated to include a mapUsers section
+- The user would be mapped to the system:masters group, giving them full cluster access
+
+#### Key Learning:
+EKS cluster access requires two levels of permissions:
+- AWS IAM permissions (which the user had)
+- Kubernetes RBAC permissions (which were missing)
+
+The aws-auth ConfigMap is the bridge between AWS IAM and Kubernetes RBAC
+
+Even with AdministratorAccess at the AWS level, users need to be explicitly mapped in the aws-auth ConfigMap to access the cluster
+
+This is a common issue in EKS clusters where the focus is often on AWS-level permissions while forgetting about the Kubernetes-level access control through the aws-auth ConfigMap.
