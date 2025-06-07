@@ -172,6 +172,46 @@ class WebsiteUser(HttpUser):
         for _ in range(0, get_flagd_value("loadGeneratorFloodHomepage")):
             self.client.get("/")
 
+    # New tasks for error scenarios
+    @task(2)
+    def simulate_400_bad_request(self):
+        # Test 1: Invalid product ID format
+        self.client.get("/api/products/invalid-product-id")
+        
+        # Test 2: Invalid quantity in cart
+        user = str(uuid.uuid1())
+        cart_item = {
+            "item": {
+                "productId": random.choice(products),
+                "quantity": -1,  # Invalid negative quantity
+            },
+            "userId": user,
+        }
+        self.client.post("/api/cart", json=cart_item)
+        
+        # Test 3: Malformed JSON in checkout
+        checkout_person = random.choice(people)
+        checkout_person["userId"] = user
+        checkout_person["email"] = "invalid-email"  # Invalid email format
+        self.client.post("/api/checkout", json=checkout_person)
+
+    @task(2)
+    def simulate_404_not_found(self):
+        # Test 1: Non-existent product ID
+        non_existent_product = "NONEXISTENT" + str(uuid.uuid4())[:8]
+        self.client.get(f"/api/products/{non_existent_product}")
+        
+        # Test 2: Invalid category in search
+        invalid_category = "invalid-category-" + str(uuid.uuid4())[:8]
+        params = {
+            "contextKeys": [invalid_category],
+        }
+        self.client.get("/api/data/", params=params)
+        
+        # Test 3: Non-existent user cart
+        non_existent_user = str(uuid.uuid4())
+        self.client.get(f"/api/cart?userId={non_existent_user}")
+
     def on_start(self):
         ctx = baggage.set_baggage("session.id", str(uuid.uuid4()))
         ctx = baggage.set_baggage("synthetic_request", "true", context=ctx)
