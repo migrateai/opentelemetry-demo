@@ -1,25 +1,21 @@
 components:
-  checkout:
+  frontend:
     imageOverride:
-      repository: sherlocksai/otel-demo-checkout
+      repository: sherlocksai/otel-demo-frontend
+      tag: latest
+      pullPolicy: Always
+  load-generator:
+    imageOverride:
+      repository: sherlocksai/otel-demo-load-generator
       tag: latest
       pullPolicy: Always
   product-catalog:
-    imageOverride:
-      repository: sherlocksai/otel-demo-product-catalog
-      tag: latest
-      pullPolicy: Always
     resources:
       limits:
         memory: 250Mi
       requests:
         memory: 100Mi
         cpu: 20m
-  load-generator:
-    imageOverride:
-      repository: sherlocksai/otel-demo-load-generator
-      tag: latest
-      pullPolicy: Always
 
 prometheus:
   server:
@@ -45,26 +41,12 @@ prometheus:
     configMapOverrideName: ""
     configFromSecret: ""
     storage:
-      volumeClaimTemplate:
-        metadata:
-          labels:
-            app.kubernetes.io/component: server
-            app.kubernetes.io/instance: my-otel-demo
-            app.kubernetes.io/name: prometheus
-            app.kubernetes.io/part-of: prometheus
-            app.kubernetes.io/version: v3.1.0
-            helm.sh/chart: prometheus-27.4.0
-        spec:
-          accessModes:
-            - ReadWriteOnce
-          resources:
-            requests:
-              storage: 10Gi
-          storageClassName: gp2
-          volumeMode: Filesystem
+      volumeClaimTemplate: null
     extraConfigmapMounts: []
     extraSecretMounts: []
     extraHostPathMounts: []
+
+
 
 opentelemetry-collector:
   enabled: true
@@ -79,4 +61,88 @@ opentelemetry-collector:
     limits:
       memory: 200Mi
   service:
-    type: ClusterIP 
+    type: ClusterIP
+  ports:
+    metrics:
+      enabled: true
+  podAnnotations:
+    prometheus.io/scrape: "true"
+    opentelemetry_community_demo: "true"
+  config:
+    receivers:
+      otlp:
+        protocols:
+          http:
+            cors:
+              allowed_origins:
+                - "http://*"
+                - "https://*"
+      httpcheck/frontend-proxy:
+        targets:
+          - endpoint: http://frontend-proxy:8080
+      redis:
+        endpoint: "valkey-cart:6379"
+        collection_interval: 10s
+
+    exporters:
+      otlp:
+        endpoint: jaeger-collector:4317
+        tls:
+          insecure: true
+      otlphttp/prometheus:
+        endpoint: http://prometheus:9090/api/v1/otlp
+        tls:
+          insecure: true
+      opensearch:
+        logs_index: otel
+        http:
+          endpoint: http://opensearch:9200
+          tls:
+            insecure: true
+      otlp/signoz:
+        endpoint: signoz-otel-collector.signoz:4317
+        tls:
+          insecure: true
+
+    processors:
+      transform:
+        error_mode: ignore
+        trace_statements:
+          - context: span
+            statements:
+              - replace_pattern(name, "\\?.*", "")
+              - replace_match(name, "GET /api/products/*", "GET /api/products/{productId}")
+      resource:
+        attributes:
+        - key: service.instance.id
+          from_attribute: k8s.pod.uid
+          action: insert
+
+    connectors:
+      spanmetrics: {}
+
+    service:
+      pipelines:
+        traces:
+          receivers: [otlp]
+          processors: [memory_limiter, resource, transform, batch]
+          exporters: [otlp, otlp/signoz, debug, spanmetrics]
+        metrics:
+          receivers: [httpcheck/frontend-proxy, redis, otlp, spanmetrics]
+          processors: [memory_limiter, resource, batch]
+          exporters: [otlphttp/prometheus, otlp/signoz, debug]
+        logs:
+          receivers: [otlp]
+          processors: [memory_limiter, resource, batch]
+          exporters: [opensearch, otlp/signoz, debug]
+      telemetry:
+        metrics:
+          level: detailed
+          readers:
+            - periodic:
+                interval: 10000
+                timeout: 5000
+                exporter:
+                  otlp:
+                    protocol: grpc
+                    endpoint: otel-collector:4318

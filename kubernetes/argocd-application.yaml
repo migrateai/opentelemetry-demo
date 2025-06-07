@@ -3,7 +3,6 @@ kind: Application
 metadata:
   name: opentelemetry-demo
   namespace: argocd
-  # TODO: Enable image updater
   annotations:
     argocd-image-updater.argoproj.io/image-list: checkout=sherlocksai/otel-demo-checkout:latest,product-catalog=sherlocksai/otel-demo-product-catalog:latest,load-generator=sherlocksai/otel-demo-load-generator:latest
     argocd-image-updater.argoproj.io/checkout.update-strategy: digest
@@ -27,12 +26,11 @@ spec:
   source:
     chart: opentelemetry-demo
     repoURL: https://migrateai.github.io/opentelemetry-helm-charts
-    targetRevision: 0.37.8
+    targetRevision: 0.37.9
     helm:
       releaseName: my-otel-demo
       valueFiles:
-        - values.yaml
-
+        - values.yaml  # Relative to the kubernetes/ path in the Git repo
   destination:
     server: https://kubernetes.default.svc
     namespace: lyrid-016d2205-3e0f-4ef0-aa64-d7debe01f0b1
@@ -50,6 +48,24 @@ spec:
         factor: 2
         maxDuration: 3m
   ignoreDifferences:
+    - group: ""
+      kind: ConfigMap
+      name: opensearch-config
+      namespace: lyrid-016d2205-3e0f-4ef0-aa64-d7debe01f0b1
+      jsonPointers:
+        - /data
+    - group: ""
+      kind: Service
+      name: ad
+      namespace: lyrid-016d2205-3e0f-4ef0-aa64-d7debe01f0b1
+      jsonPointers:
+        - /spec
+    - group: ""
+      kind: Service
+      name: cart
+      namespace: lyrid-016d2205-3e0f-4ef0-aa64-d7debe01f0b1
+      jsonPointers:
+        - /spec
     - group: apps
       kind: Deployment
       name: jaeger
@@ -80,3 +96,8 @@ spec:
       jsonPointers:
         - /spec
         - /status
+        - /metadata/annotations
+        - /metadata/labels
+        - /metadata/finalizers
+        - /metadata/resourceVersion
+        - /metadata/uid

@@ -1,0 +1,19 @@
+# app-project.yaml
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: opentelemetry-project
+  namespace: argocd
+spec:
+  description: Project for OpenTelemetry Demo
+  sourceRepos:
+    - https://github.com/migrateai/opentelemetry-demo.git
+  destinations:
+    - namespace: lyrid-016d2205-3e0f-4ef0-aa64-d7debe01f0b1
+      server: https://kubernetes.default.svc
+  clusterResourceWhitelist:
+    - group: '*'
+      kind: '*'
+  namespaceResourceWhitelist:
+    - group: '*'
+      kind: '*'
