@@ -10,7 +10,7 @@ metadata:
     kubernetes.io/ingress.class: nginx
 spec:
   rules:
-    - host: lyrid-otel-demo-signoz.sherlocks.cloud   # <-- Replace with your DNS name
+    - host: signoz.sherlocks.cloud   # <-- Replace with your DNS name
       http:
         paths:
           - path: /

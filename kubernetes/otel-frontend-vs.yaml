@@ -2,7 +2,7 @@ apiVersion: networking.istio.io/v1beta1
 kind: VirtualService
 metadata:
   name: otel-frontend
-  namespace: lyrid-016d2205-3e0f-4ef0-aa64-d7debe01f0b1
+  namespace: otel-demo-namespace
 spec:
   gateways:
   - istio-system/public-gateway
@@ -16,7 +16,7 @@ spec:
           x-env: oteldemo
     route:
     - destination:
-        host: frontend-proxy.lyrid-016d2205-3e0f-4ef0-aa64-d7debe01f0b1.svc.cluster.local
+        host: frontend-proxy.otel-demo-namespace.svc.cluster.local
         port:
           number: 8080
 ---
