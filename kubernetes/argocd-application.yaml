@@ -31,6 +31,11 @@ spec:
       releaseName: my-otel-demo
       values: |
         components:
+          checkout:
+            imageOverride:
+              repository: sherlocksai/otel-demo-checkout-service
+              tag: latest
+              pullPolicy: Always
           frontend:
             imageOverride:
               repository: sherlocksai/otel-demo-frontend
