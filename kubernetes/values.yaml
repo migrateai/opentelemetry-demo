@@ -9,6 +9,9 @@ components:
       repository: sherlocksai/otel-demo-load-generator
       tag: latest
       pullPolicy: Always
+    envOverrides:
+      - name: WEB_BASE_PATH
+        value: "/loadgen"
   product-catalog:
     resources:
       limits:

@@ -31,6 +31,11 @@ spec:
       releaseName: my-otel-demo
       values: |
         components:
+          frontend-proxy:
+            imageOverride:
+              repository: sherlocksai/otel-demo-frontend-proxy
+              tag: latest
+              pullPolicy: Always
           frontend:
             imageOverride:
               repository: sherlocksai/otel-demo-frontend
@@ -41,6 +46,9 @@ spec:
               repository: sherlocksai/otel-demo-load-generator
               tag: latest
               pullPolicy: Always
+            envOverrides:
+              - name: LOCUST_WEB_BASE_PATH
+                value: /loadgen
           product-catalog:
             resources:
               limits:

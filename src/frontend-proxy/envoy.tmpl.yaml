@@ -38,7 +38,7 @@ static_resources:
                         - "*"
                       routes:
                         - match: { prefix: "/loadgen" }
-                          route: { cluster: loadgen, prefix_rewrite: "/" }
+                          route: { cluster: loadgen }
                         - match: { prefix: "/otlp-http/" }
                           route: { cluster: opentelemetry_collector_http, prefix_rewrite: "/" }
                         - match: { prefix: "/jaeger" }
