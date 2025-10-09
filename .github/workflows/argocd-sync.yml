@@ -54,11 +54,10 @@ jobs:
           # Create kubeconfig directory
           mkdir -p $HOME/.kube
 
-          # Write kubeconfig from secret
-          echo "${{ secrets.KUBE_CONFIG }}" > $HOME/.kube/config
-
-          # Set proper permissions
-          chmod 600 $HOME/.kube/config
+          # Update kubeconfig using AWS CLI
+          aws eks update-kubeconfig \
+            --region us-east-1 \
+            --name otel-demo-aws-eks-cluster
 
           # Verify connection
           kubectl cluster-info
