@@ -453,6 +453,13 @@ func (p *productCatalog) GetProduct(ctx context.Context, req *pb.GetProductReque
 		}
 	}
 
+	// Inject nil pointer error for specific product IDs
+	if req.Id == "66VCHSJNUP" || req.Id == "1YMWWN1N4O" {
+		found = nil
+		// This will cause a nil pointer dereference panic
+		log.Errorf("Attempted to access product details for nil product (ID: %s)", req.Id)
+	}
+
 	if found == nil {
 		msg := fmt.Sprintf("Product Not Found: %s", req.Id)
 		span.SetStatus(otelcodes.Error, msg)
