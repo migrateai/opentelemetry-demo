@@ -22,6 +22,8 @@ env:
   ARGOCD_NAMESPACE: argocd
   KUBE_NAMESPACE: lyrid-016d2205-3e0f-4ef0-aa64-d7debe01f0b1
   ARGOCD_OPTS: "--insecure --grpc-web"
+  AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+  AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
 
 jobs:
   sync:
