@@ -3,26 +3,30 @@
     {
       "id": "OLJCESPC7Z",
       "name": "National Park Foundation Explorascope",
-      "description": "The National Park Foundation’s (NPF) Explorascope 60AZ is a manual alt-azimuth, refractor telescope perfect for celestial viewing on the go. The NPF Explorascope 60 can view the planets, moon, star clusters and brighter deep sky objects like the Orion Nebula and Andromeda Galaxy.",
+      "description": "The National Park Foundation's (NPF) Explorascope 60AZ is a manual alt-azimuth, refractor telescope perfect for celestial viewing on the go. The NPF Explorascope 60 can view the planets, moon, star clusters and brighter deep sky objects like the Orion Nebula and Andromeda Galaxy.",
       "picture": "NationalParkFoundationExplorascope.jpg",
       "priceUsd": {
         "currencyCode": "USD",
         "units": 101,
         "nanos": 960000000
       },
-      "categories": ["telescopes"]
+      "categories": ["telescopes"],
+      "minDiscount": 15.0,
+      "maxDiscount": 15.0
     },
     {
       "id": "66VCHSJNUP",
       "name": "Starsense Explorer Refractor Telescope",
-      "description": "The first telescope that uses your smartphone to analyze the night sky and calculate its position in real time. StarSense Explorer is ideal for beginners thanks to the app’s user-friendly interface and detailed tutorials. It’s like having your own personal tour guide of the night sky",
+      "description": "The first telescope that uses your smartphone to analyze the night sky and calculate its position in real time. StarSense Explorer is ideal for beginners thanks to the app's user-friendly interface and detailed tutorials. It's like having your own personal tour guide of the night sky",
       "picture": "StarsenseExplorer.jpg",
       "priceUsd": {
         "currencyCode": "USD",
         "units": 349,
         "nanos": 950000000
       },
-      "categories": ["telescopes"]
+      "categories": ["telescopes"],
+      "minDiscount": 10.0,
+      "maxDiscount": 25.0
     },
     {
       "id": "1YMWWN1N4O",
@@ -34,7 +38,9 @@
         "units": 129,
         "nanos": 950000000
       },
-      "categories": ["telescopes", "travel"]
+      "categories": ["telescopes", "travel"],
+      "minDiscount": 15.0,
+      "maxDiscount": 30.0
     },
     {
       "id": "L9ECAV7KIM",
@@ -46,19 +52,23 @@
         "units": 21,
         "nanos": 950000000
       },
-      "categories": ["accessories"]
+      "categories": ["accessories"],
+      "minDiscount": 0.0,
+      "maxDiscount": 10.0
     },
     {
       "id": "2ZYFJ3GM2N",
       "name": "Roof Binoculars",
-      "description": "This versatile, all-around binocular is a great choice for the trail, the stadium, the arena, or just about anywhere you want a close-up view of the action without sacrificing brightness or detail. It’s an especially great companion for nature observation and bird watching, with ED glass that helps you spot the subtlest field markings and a close focus of just 6.5 feet.",
+      "description": "This versatile, all-around binocular is a great choice for the trail, the stadium, the arena, or just about anywhere you want a close-up view of the action without sacrificing brightness or detail. It's an especially great companion for nature observation and bird watching, with ED glass that helps you spot the subtlest field markings and a close focus of just 6.5 feet.",
       "picture": "RoofBinoculars.jpg",
       "priceUsd": {
         "currencyCode": "USD",
         "units": 209,
         "nanos": 950000000
       },
-      "categories": ["binoculars"]
+      "categories": ["binoculars"],
+      "minDiscount": 20.0,
+      "maxDiscount": 20.0
     },
     {
       "id": "0PUK6V6EV0",
@@ -70,55 +80,93 @@
         "units": 175,
         "nanos": 0
       },
-      "categories": ["accessories", "telescopes"]
+      "categories": ["accessories", "telescopes"],
+      "minDiscount": 5.0,
+      "maxDiscount": 20.0
     },
     {
       "id": "LS4PSXUNUM",
       "name": "Red Flashlight",
-      "description": "This 3-in-1 device features a 3-mode red flashlight, a hand warmer, and a portable power bank for recharging your personal electronics on the go. Whether you use it to light the way at an astronomy star party, a night walk, or wildlife research, ThermoTorch 3 Astro Red’s rugged, IPX4-rated design will withstand your everyday activities.",
+      "description": "This 3-in-1 device features a 3-mode red flashlight, a hand warmer, and a portable power bank for recharging your personal electronics on the go. Whether you use it to light the way at an astronomy star party, a night walk, or wildlife research, ThermoTorch 3 Astro Red's rugged, IPX4-rated design will withstand your everyday activities.",
       "picture": "RedFlashlight.jpg",
       "priceUsd": {
         "currencyCode": "USD",
         "units": 57,
         "nanos": 80000000
       },
-      "categories": ["accessories", "flashlights"]
+      "categories": ["accessories", "flashlights"],
+      "minDiscount": 0.0,
+      "maxDiscount": 0.0
     },
     {
       "id": "9SIQT8TOJO",
       "name": "Optical Tube Assembly",
-      "description": "Capturing impressive deep-sky astroimages is easier than ever with Rowe-Ackermann Schmidt Astrograph (RASA) V2, the perfect companion to today’s top DSLR or astronomical CCD cameras. This fast, wide-field f/2.2 system allows for shorter exposure times compared to traditional f/10 astroimaging, without sacrificing resolution. Because shorter sub-exposure times are possible, your equatorial mount won’t need to accurately track over extended periods. The short focal length also lessens equatorial tracking demands. In many cases, autoguiding will not be required.",
+      "description": "Capturing impressive deep-sky astroimages is easier than ever with Rowe-Ackermann Schmidt Astrograph (RASA) V2, the perfect companion to today's top DSLR or astronomical CCD cameras. This fast, wide-field f/2.2 system allows for shorter exposure times compared to traditional f/10 astroimaging, without sacrificing resolution. Because shorter sub-exposure times are possible, your equatorial mount won't need to accurately track over extended periods. The short focal length also lessens equatorial tracking demands. In many cases, autoguiding will not be required.",
       "picture": "OpticalTubeAssembly.jpg",
       "priceUsd": {
         "currencyCode": "USD",
         "units": 3599,
         "nanos": 0
       },
-      "categories": ["accessories", "telescopes", "assembly"]
+      "categories": ["accessories", "telescopes", "assembly"],
+      "minDiscount": 2.0,
+      "maxDiscount": 2.0
     },
     {
       "id": "6E92ZMYYFZ",
       "name": "Solar Filter",
-      "description": "Enhance your viewing experience with EclipSmart Solar Filter for 8” telescopes. With two Velcro straps and four self-adhesive Velcro pads for added safety, you can be assured that the solar filter cannot be accidentally knocked off and will provide Solar Safe, ISO compliant viewing.",
+      "description": "Enhance your viewing experience with EclipSmart Solar Filter for 8" telescopes. With two Velcro straps and four self-adhesive Velcro pads for added safety, you can be assured that the solar filter cannot be accidentally knocked off and will provide Solar Safe, ISO compliant viewing.",
       "picture": "SolarFilter.jpg",
       "priceUsd": {
         "currencyCode": "USD",
         "units": 69,
         "nanos": 950000000
       },
-      "categories": ["accessories", "telescopes"]
+      "categories": ["accessories", "telescopes"],
+      "minDiscount": 10.0,
+      "maxDiscount": 22.0
     },
     {
       "id": "HQTGWGPNH4",
       "name": "The Comet Book",
-      "description": "A 16th-century treatise on comets, created anonymously in Flanders (now northern France) and now held at the Universitätsbibliothek Kassel. Commonly known as The Comet Book (or Kometenbuch in German), its full title translates as “Comets and their General and Particular Meanings, According to Ptolomeé, Albumasar, Haly, Aliquind and other Astrologers”. The image is from https://publicdomainreview.org/collection/the-comet-book, made available by the Universitätsbibliothek Kassel under a CC-BY SA 4.0 license (https://creativecommons.org/licenses/by-sa/4.0/)",
+      "description": "A 16th-century treatise on comets, created anonymously in Flanders (now northern France) and now held at the Universitätsbibliothek Kassel. Commonly known as The Comet Book (or Kometenbuch in German), its full title translates as "Comets and their General and Particular Meanings, According to Ptolomeé, Albumasar, Haly, Aliquind and other Astrologers". The image is from https://publicdomainreview.org/collection/the-comet-book, made available by the Universitätsbibliothek Kassel under a CC-BY SA 4.0 license (https://creativecommons.org/licenses/by-sa/4.0/)",
       "picture": "TheCometBook.jpg",
       "priceUsd": {
         "currencyCode": "USD",
         "units": 0,
         "nanos": 990000000
       },
-      "categories": ["books"]
+      "categories": ["books"],
+      "minDiscount": 0.0,
+      "maxDiscount": 5.0
+    },
+    {
+      "id": "4ZCQD4JXZQ",
+      "name": "Constellation Field Guide",
+      "description": "A comprehensive guide to identifying constellations in the night sky. Perfect for beginners and experienced stargazers alike.",
+      "picture": "ConstellationFieldGuide.jpg",
+      "priceUsd": {
+        "currencyCode": "USD",
+        "units": 0,
+        "nanos": 0
+      },
+      "categories": ["books"],
+      "minDiscount": 0.0,
+      "maxDiscount": 0.0
+    },
+    {
+      "id": "XYZABC1234",
+      "name": "Star Map Poster",
+      "description": "Beautiful celestial map showing all major constellations and stars visible from the Northern Hemisphere.",
+      "picture": "StarMapPoster.jpg",
+      "priceUsd": {
+        "currencyCode": "USD",
+        "units": 29,
+        "nanos": 990000000
+      },
+      "categories": ["accessories"],
+      "minDiscount": 15.0,
+      "maxDiscount": 15.0
     }
   ]
 }

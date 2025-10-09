@@ -10,6 +10,7 @@ import (
 	"context"
 	"fmt"
 	"io/fs"
+	"math/rand"
 	"net"
 	"os"
 	"os/signal"
@@ -379,6 +380,121 @@ func (p *productCatalog) Watch(req *healthpb.HealthCheckRequest, ws healthpb.Hea
 	return status.Errorf(codes.Unimplemented, "health check via Watch not implemented")
 }
 
+// applyDiscountPricing applies dynamic discounts with A/B testing and error injection
+func applyDiscountPricing(ctx context.Context, products []*pb.Product) []*pb.Product {
+	span := trace.SpanFromContext(ctx)
+
+	// Feature flag check for discount feature
+	client := openfeature.NewClient("productCatalog")
+	discountEnabled, _ := client.BooleanValue(
+		ctx, "discountFeature", true, openfeature.EvaluationContext{},
+	)
+
+	if !discountEnabled {
+		return products
+	}
+
+	// Create a copy to avoid mutating original catalog
+	discountedProducts := make([]*pb.Product, len(products))
+
+	for i, product := range products {
+		// Deep copy the product
+		discountedProducts[i] = &pb.Product{
+			Id:          product.Id,
+			Name:        product.Name,
+			Description: product.Description,
+			Picture:     product.Picture,
+			PriceUsd: &pb.Money{
+				CurrencyCode: product.PriceUsd.CurrencyCode,
+				Units:        product.PriceUsd.Units,
+				Nanos:        product.PriceUsd.Nanos,
+			},
+			Categories:  product.Categories,
+			MinDiscount: product.MinDiscount,
+			MaxDiscount: product.MaxDiscount,
+		}
+
+		// Calculate discount with error injection - now using product discount range from JSON
+		discount := calculateDiscount(product)
+
+		// Apply discount to price
+		if discount > 0 {
+			originalPrice := float64(product.PriceUsd.Units) + float64(product.PriceUsd.Nanos)/1e9
+			discountedPrice := originalPrice * (1 - discount/100.0)
+
+			discountedProducts[i].PriceUsd.Units = int64(discountedPrice)
+			discountedProducts[i].PriceUsd.Nanos = int32((discountedPrice - float64(int64(discountedPrice))) * 1e9)
+
+			span.AddEvent(fmt.Sprintf("Discount applied: %s - %.1f%%", product.Id, discount))
+		}
+	}
+
+	return discountedProducts
+}
+
+// calculateDiscount determines discount percentage from product JSON
+// ERROR-PRONE: Will fail based on JSON values (no explicit checks)
+func calculateDiscount(product *pb.Product) float64 {
+	// Read values from product JSON
+	minDiscount := float64(product.MinDiscount)
+	maxDiscount := float64(product.MaxDiscount)
+	productPrice := float64(product.PriceUsd.Units) + float64(product.PriceUsd.Nanos)/1e9
+	discountRange := maxDiscount - minDiscount
+
+	// Calculate price-to-discount ratio (WILL PANIC if price = 0 in JSON)
+	priceRatio := maxDiscount / productPrice
+
+	// Calculate discount efficiency (WILL PANIC if minDiscount = maxDiscount in JSON)
+	efficiency := maxDiscount / discountRange
+
+	// Use calculated values in discount logic
+	baseDiscount := minDiscount
+	if priceRatio > 0 {
+		baseDiscount = minDiscount + (efficiency * 0.01) // Use efficiency in calculation
+	}
+
+	// Random discount between min and max
+	discount := baseDiscount + rand.Float64()*discountRange
+
+	return discount
+}
+
+// sortProductsWithRecommendations sorts products by discount-to-price ratio
+// ERROR-PRONE: Will fail based on JSON values (price = 0 causes division by zero)
+func sortProductsWithRecommendations(ctx context.Context, products []*pb.Product) []*pb.Product {
+	if len(products) == 0 {
+		return products
+	}
+
+	span := trace.SpanFromContext(ctx)
+	span.AddEvent("Sorting products by value")
+
+	// Simple bubble sort by discount/price ratio (best value first)
+	sortedProducts := make([]*pb.Product, len(products))
+	copy(sortedProducts, products)
+
+	for i := 0; i < len(sortedProducts)-1; i++ {
+		for j := 0; j < len(sortedProducts)-i-1; j++ {
+			// Calculate value ratio for comparison
+			price1 := float64(sortedProducts[j].PriceUsd.Units) + float64(sortedProducts[j].PriceUsd.Nanos)/1e9
+			discount1 := float64(sortedProducts[j].MaxDiscount)
+			ratio1 := discount1 / price1 // PANIC if price1 = 0
+
+			price2 := float64(sortedProducts[j+1].PriceUsd.Units) + float64(sortedProducts[j+1].PriceUsd.Nanos)/1e9
+			discount2 := float64(sortedProducts[j+1].MaxDiscount)
+			ratio2 := discount2 / price2 // PANIC if price2 = 0
+
+			// Sort by ratio (higher ratio = better value = comes first)
+			if ratio1 < ratio2 {
+				sortedProducts[j], sortedProducts[j+1] = sortedProducts[j+1], sortedProducts[j]
+			}
+		}
+	}
+
+	span.SetAttributes(attribute.Int("products.sorted", len(sortedProducts)))
+	return sortedProducts
+}
+
 func (p *productCatalog) ListProducts(ctx context.Context, req *pb.Empty) (*pb.ListProductsResponse, error) {
 	startTime := time.Now()
 	defer func() {
@@ -394,7 +510,13 @@ func (p *productCatalog) ListProducts(ctx context.Context, req *pb.Empty) (*pb.L
 	// Use the pre-initialized counter
 	productsCounter.Add(ctx, 1)
 
-	return &pb.ListProductsResponse{Products: catalog}, nil
+	// Apply discount pricing with A/B testing
+	productsWithDiscount := applyDiscountPricing(ctx, catalog)
+
+	// Sort products with recommendations
+	sortedProducts := sortProductsWithRecommendations(ctx, productsWithDiscount)
+
+	return &pb.ListProductsResponse{Products: sortedProducts}, nil
 }
 
 func (p *productCatalog) GetProduct(ctx context.Context, req *pb.GetProductRequest) (*pb.Product, error) {

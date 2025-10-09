@@ -21,11 +21,12 @@
 package oteldemo
 
 import (
-	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
-	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
 	sync "sync"
 	unsafe "unsafe"
+
+	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
+	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 )
 
 const (
@@ -420,7 +421,10 @@ type Product struct {
 	PriceUsd    *Money                 `protobuf:"bytes,5,opt,name=price_usd,json=priceUsd,proto3" json:"price_usd,omitempty"`
 	// Categories such as "clothing" or "kitchen" that can be used to look up
 	// other related products.
-	Categories    []string `protobuf:"bytes,6,rep,name=categories,proto3" json:"categories,omitempty"`
+	Categories []string `protobuf:"bytes,6,rep,name=categories,proto3" json:"categories,omitempty"`
+	// Discount range for dynamic pricing (percentage)
+	MinDiscount   float32 `protobuf:"fixed32,7,opt,name=min_discount,json=minDiscount,proto3" json:"min_discount,omitempty"`
+	MaxDiscount   float32 `protobuf:"fixed32,8,opt,name=max_discount,json=maxDiscount,proto3" json:"max_discount,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -495,6 +499,20 @@ func (x *Product) GetCategories() []string {
 		return x.Categories
 	}
 	return nil
+}
+
+func (x *Product) GetMinDiscount() float32 {
+	if x != nil {
+		return x.MinDiscount
+	}
+	return 0
+}
+
+func (x *Product) GetMaxDiscount() float32 {
+	if x != nil {
+		return x.MaxDiscount
+	}
+	return 0
 }
 
 type ListProductsResponse struct {
