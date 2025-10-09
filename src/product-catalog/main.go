@@ -413,6 +413,20 @@ func (p *productCatalog) GetProduct(ctx context.Context, req *pb.GetProductReque
 	productCounter, _ = meter.Int64Counter("product_catalog.get_product.count")
 	productCounter.Add(ctx, 1)
 
+	// Check if product has quantity limits - simulate error when user tries to select multiple quantities
+	if p.checkQuantityLimit(ctx, req.Id) {
+		msg := fmt.Sprintf("Error: Product quantity limit exceeded for product %s. Only 1 item allowed per order.", req.Id)
+		span.SetStatus(otelcodes.Error, msg)
+		span.AddEvent(msg)
+
+		// Record error metrics for quantity validation
+		errorCounter.Add(ctx, 1)
+		quantityLimitCounter, _ := meter.Int64Counter("product_catalog.get_product.quantity_limit_exceeded")
+		quantityLimitCounter.Add(ctx, 1)
+
+		return nil, status.Errorf(codes.FailedPrecondition, msg)
+	}
+
 	// GetProduct will fail on a specific product when feature flag is enabled
 	if p.checkProductFailure(ctx, req.Id) {
 		msg := fmt.Sprintf("Error: Product Catalog Fail Feature Flag Enabled")
@@ -499,6 +513,18 @@ func (p *productCatalog) checkProductFailure(ctx context.Context, id string) boo
 		ctx, "productCatalogFailure", false, openfeature.EvaluationContext{},
 	)
 	return failureEnabled
+}
+
+// checkQuantityLimit simulates checking if a product has quantity restrictions
+// This will fail for ALL products to simulate "quantity limit exceeded" errors
+// when users try to select more than 1 quantity from dropdown
+func (p *productCatalog) checkQuantityLimit(ctx context.Context, id string) bool {
+	// Check feature flag to enable/disable quantity validation for ALL products
+	client := openfeature.NewClient("productCatalog")
+	quantityCheckEnabled, _ := client.BooleanValue(
+		ctx, "productQuantityValidation", false, openfeature.EvaluationContext{},
+	)
+	return quantityCheckEnabled
 }
 
 func createClient(ctx context.Context, svcAddr string) (*grpc.ClientConn, error) {

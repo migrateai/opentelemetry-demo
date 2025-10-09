@@ -10,6 +10,15 @@
       },
       "defaultVariant": "off"
     },
+    "productQuantityValidation": {
+      "description": "Enable quantity validation for ALL products - fails when user selects more than 1 quantity for any product",
+      "state": "ENABLED",
+      "variants": {
+        "on": true,
+        "off": false
+      },
+      "defaultVariant": "on"
+    },
     "recommendationCacheFailure": {
       "description": "Fail recommendation service cache",
       "state": "ENABLED",
