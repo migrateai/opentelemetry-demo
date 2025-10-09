@@ -520,7 +520,7 @@ func (p *productCatalog) checkProductFailure(ctx context.Context, id string) boo
 // when users try to select more than 1 quantity from dropdown
 func (p *productCatalog) checkQuantityLimit(ctx context.Context, id string) bool {
 	// Check feature flag to enable/disable quantity validation for ALL products
-	client := openfeature.NewClient("productCatalog")
+	client := openfeature.NewClient("productQuantityValidation")
 	quantityCheckEnabled, _ := client.BooleanValue(
 		ctx, "productQuantityValidation", false, openfeature.EvaluationContext{},
 	)
