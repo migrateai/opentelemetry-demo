@@ -439,7 +439,7 @@ func (p *productCatalog) GetProduct(ctx context.Context, req *pb.GetProductReque
 	if req.Id == "66VCHSJNUP" || req.Id == "1YMWWN1N4O" {
 		found = nil
 		// This will cause a nil pointer dereference panic
-		log.Infof("Product details: %s - %s", found.Name, found.Description)
+		log.Errorf("Attempted to access product details for nil product (ID: %s)", req.Id)
 	}
 
 	if found == nil {
