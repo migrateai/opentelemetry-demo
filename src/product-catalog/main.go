@@ -522,13 +522,10 @@ func (p *productCatalog) checkProductFailure(ctx context.Context, id string) boo
 // checkQuantityLimit simulates checking if a product has quantity restrictions
 // This will fail for ALL products to simulate "quantity limit exceeded" errors
 // when users try to select more than 1 quantity from dropdown
+// ALWAYS ENABLED - returns true for all products
 func (p *productCatalog) checkQuantityLimit(ctx context.Context, id string) bool {
-	// Check feature flag to enable/disable quantity validation for ALL products
-	client := openfeature.NewClient("productQuantityValidation")
-	quantityCheckEnabled, _ := client.BooleanValue(
-		ctx, "productQuantityValidation", false, openfeature.EvaluationContext{},
-	)
-	return quantityCheckEnabled
+	// Quantity validation is always enabled for ALL products
+	return true
 }
 
 func createClient(ctx context.Context, svcAddr string) (*grpc.ClientConn, error) {
