@@ -64,6 +64,7 @@ var (
 	// Error metrics
 	errorCounter          metric.Int64Counter
 	unhandledErrorCounter metric.Int64Counter
+	quantityLimitCounter  metric.Int64Counter
 	// Request counters
 	productsCounter      metric.Int64Counter
 	productCounter       metric.Int64Counter
@@ -195,6 +196,10 @@ func initMeterProvider() *sdkmetric.MeterProvider {
 	unhandledErrorCounter, _ = meter.Int64Counter(
 		"product_catalog.errors.unhandled",
 		metric.WithDescription("Total number of unhandled errors"),
+	)
+	quantityLimitCounter, _ = meter.Int64Counter(
+		"product_catalog.get_product.quantity_limit_exceeded",
+		metric.WithDescription("Total number of quantity limit exceeded errors"),
 	)
 
 	// Initialize request counters
@@ -421,7 +426,6 @@ func (p *productCatalog) GetProduct(ctx context.Context, req *pb.GetProductReque
 
 		// Record error metrics for quantity validation
 		errorCounter.Add(ctx, 1)
-		quantityLimitCounter, _ := meter.Int64Counter("product_catalog.get_product.quantity_limit_exceeded")
 		quantityLimitCounter.Add(ctx, 1)
 
 		return nil, status.Errorf(codes.FailedPrecondition, msg)
