@@ -45,6 +45,14 @@ class RecommendationService(demo_pb2_grpc.RecommendationServiceServicer):
         span.set_attribute("app.products_recommended.count", len(prod_list))
         logger.info(f"Receive ListRecommendations for product ids:{prod_list}")
 
+        # PANIC #3: Type Error - Calculate diversity score
+        # Natural bug: Trying to use None as a list when no products returned
+        # Trigger: When get_product_list returns empty or has error condition
+        if not prod_list:
+            prod_list = None  # Simulates error handling that returns None instead of []
+        diversity_score = len(set(prod_list))  # TypeError: object of type 'NoneType' has no len()
+        span.set_attribute("app.recommendation.diversity", diversity_score)
+
         # build and return response
         response = demo_pb2.ListRecommendationsResponse()
         response.product_ids.extend(prod_list)
@@ -100,12 +108,25 @@ def get_product_list(request_product_ids):
         filtered_products = list(set(product_ids) - set(request_product_ids))
         num_products = len(filtered_products)
         span.set_attribute("app.filtered_products.count", num_products)
+        
+        # PANIC #1: Division by Zero - Calculate recommendation quality score
+        # Natural bug: Dividing by number of filtered products without checking for empty list
+        # Trigger: When all products are in request_product_ids (nothing left to recommend)
+        quality_score = len(product_ids) / num_products  # ZeroDivisionError if num_products == 0
+        span.set_attribute("app.recommendation.quality_score", quality_score)
+        
         num_return = min(max_responses, num_products)
 
         # Sample list of indicies to return
         indices = random.sample(range(num_products), num_return)
         # Fetch product ids from indices
         prod_list = [filtered_products[i] for i in indices]
+        
+        # PANIC #2: Index Out of Range - Get first recommendation metadata
+        # Natural bug: Accessing first element without checking if list is empty
+        # Trigger: When num_return is 0 (no products to recommend)
+        first_recommendation_id = prod_list[0]  # IndexError if prod_list is empty
+        span.set_attribute("app.first_recommendation", first_recommendation_id)
 
         span.set_attribute("app.filtered_products.list", prod_list)
 
@@ -170,3 +191,39 @@ if __name__ == "__main__":
     server.start()
     logger.info(f'Recommendation service started, listening on port {port}')
     server.wait_for_termination()
+
+"""
+================================================================================
+RECOMMENDATION SERVICE - INTENTIONAL ERRORS FOR OBSERVABILITY TESTING
+================================================================================
+
+3 Natural Errors (Real features with realistic bugs - missing validations)
+
+ERROR #1: Division by Zero - Quality score calculation
+  Line: 107 in get_product_list()
+  Bug: quality_score = len(product_ids) / num_products
+  Trigger: Request all product IDs (filtered_products becomes empty)
+  Test: Request recommendations with all product IDs
+
+ERROR #2: Index Out of Range - First recommendation metadata
+  Line: 120 in get_product_list()
+  Bug: first_recommendation_id = prod_list[0]
+  Trigger: No products to recommend (prod_list is empty)
+  Test: Request recommendations when no products available
+
+ERROR #3: Type Error - Diversity score calculation
+  Line: 53 in ListRecommendations()
+  Bug: len(set(prod_list)) when prod_list is None
+  Trigger: Empty recommendation list
+  Test: Request recommendations when get_product_list returns empty
+
+Quick Test:
+  docker logs -f recommendation
+  # Trigger via product catalog frontend
+
+Safe Mode:
+  Avoid: Requesting all product IDs, empty product lists
+
+Last Updated: October 10, 2025
+================================================================================
+"""
