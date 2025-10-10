@@ -217,13 +217,6 @@ ERROR #3: Type Error - Diversity score calculation
   Trigger: Empty recommendation list
   Test: Request recommendations when get_product_list returns empty
 
-Quick Test:
-  docker logs -f recommendation
-  # Trigger via product catalog frontend
-
-Safe Mode:
-  Avoid: Requesting all product IDs, empty product lists
-
 Last Updated: October 10, 2025
 ================================================================================
 """
