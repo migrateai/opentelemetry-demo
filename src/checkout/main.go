@@ -396,6 +396,12 @@ func (cs *checkout) PlaceOrder(ctx context.Context, req *pb.PlaceOrderRequest) (
 		total = money.Must(money.Sum(total, multPrice))
 	}
 
+	// Calculate shipping tier for priority handling
+	// PANIC #2: Division by Zero - Missing check for empty cart
+	// Natural bug: Calculating average cart value without validating cart has items
+	shippingTier := cs.calculateShippingTier(prep.cartItems, total)
+	span.SetAttributes(attribute.String("app.shipping.tier", shippingTier))
+
 	txID, err := cs.chargeCard(ctx, total, req.CreditCard)
 	if err != nil {
 		log.Error("Failed to charge card", "error", err)
@@ -557,6 +563,14 @@ func (cs *checkout) prepOrderItems(ctx context.Context, items []*pb.CartItem, us
 		if err != nil {
 			return nil, fmt.Errorf("failed to convert price of %q to %s", item.GetProductId(), userCurrency)
 		}
+
+		// PANIC #1: Division by Zero in Quantity Calculation
+		// Trigger: When cart item quantity is 0
+		// Looks like innocent price-per-unit calculation but crashes on zero quantity
+		// Data-driven: Controlled by CartItem.Quantity value
+		pricePerUnit := int32(price.Units) / item.Quantity
+		_ = pricePerUnit // Use the variable to avoid unused variable warning
+
 		out[i] = &pb.OrderItem{
 			Item: item,
 			Cost: price}
@@ -582,6 +596,12 @@ func (cs *checkout) chargeCard(ctx context.Context, amount *pb.Money, paymentInf
 		duration := float64(time.Since(startTime).Microseconds()) / 1000.0 // Convert to milliseconds
 		chargeCardHistogram.Record(ctx, duration)
 	}()
+
+	// Apply fraud detection check
+	// PANIC #3: Nil Pointer - Missing validation before using fraud check result
+	// Natural bug: Using returned object without checking if it's nil
+	fraudCheck := cs.checkCardFraud(paymentInfo)
+	log.Infof("Fraud check score: %d", fraudCheck.RiskScore)
 
 	paymentService := cs.paymentSvcClient
 	if cs.isFeatureFlagEnabled(ctx, "paymentUnreachable") {
@@ -638,6 +658,12 @@ func (cs *checkout) shipOrder(ctx context.Context, address *pb.Address, items []
 		duration := float64(time.Since(startTime).Microseconds()) / 1000.0 // Convert to milliseconds
 		shipOrderHistogram.Record(ctx, duration)
 	}()
+
+	// Validate address format for international shipping
+	// PANIC #4: Index Out of Range - Missing empty string check before accessing characters
+	// Natural bug: Checking first character without validating string is non-empty
+	addressPrefix := cs.getAddressPrefix(address)
+	log.Debugf("Shipping to address prefix: %s", addressPrefix)
 
 	resp, err := cs.shippingSvcClient.ShipOrder(ctx, &pb.ShipOrderRequest{
 		Address: address,
@@ -770,3 +796,89 @@ func (cs *checkout) getIntFeatureFlag(ctx context.Context, featureFlagName strin
 
 	return int(featureFlagValue)
 }
+
+// calculateShippingTier determines shipping priority based on cart value
+// PANIC #2: Division by Zero - Divides total by number of items without checking for empty cart
+// This is a natural bug - forgetting to validate input before calculation
+func (cs *checkout) calculateShippingTier(items []*pb.CartItem, total *pb.Money) string {
+	// Calculate average item value to determine tier
+	// Bug: Doesn't check if items array is empty before division
+	avgItemValue := int32(total.Units) / int32(len(items)) // PANIC if len(items) == 0
+
+	if avgItemValue > 100 {
+		return "PRIORITY"
+	} else if avgItemValue > 50 {
+		return "STANDARD"
+	}
+	return "ECONOMY"
+}
+
+// FraudCheckResult holds fraud detection results
+type FraudCheckResult struct {
+	RiskScore int32
+	Flagged   bool
+	Reason    string
+}
+
+// checkCardFraud performs basic fraud detection on credit card
+// PANIC #3: Nil Pointer - Returns nil for flagged cards without proper error handling
+// This is a natural bug - returning nil in error case instead of error object
+func (cs *checkout) checkCardFraud(card *pb.CreditCardInfo) *FraudCheckResult {
+	// Simple fraud check: flag cards ending in "0000" as suspicious
+	// Bug: Returns nil instead of proper error result
+	if len(card.CreditCardNumber) >= 4 &&
+		card.CreditCardNumber[len(card.CreditCardNumber)-4:] == "0000" {
+		log.Warn("Suspicious card detected, returning nil result")
+		return nil // PANIC when caller tries to access .RiskScore without nil check
+	}
+
+	// Normal cards get a valid result
+	return &FraudCheckResult{
+		RiskScore: 10,
+		Flagged:   false,
+		Reason:    "Normal transaction",
+	}
+}
+
+// getAddressPrefix extracts address prefix for routing validation
+// PANIC #4: Index Out of Range - Accesses string characters without checking length
+// This is a natural bug - assuming string is non-empty before accessing index
+func (cs *checkout) getAddressPrefix(address *pb.Address) string {
+	// Extract first 3 characters of street address for routing
+	// Bug: Doesn't check if StreetAddress is empty or shorter than 3 characters
+	prefix := address.StreetAddress[:3] // PANIC if StreetAddress is empty or len < 3
+	return prefix
+}
+
+/*
+================================================================================
+CHECKOUT SERVICE - INTENTIONAL PANICS FOR OBSERVABILITY TESTING
+================================================================================
+
+4 Natural Panics (Real features with realistic bugs - missing validations)
+
+PANIC #1: Price-per-unit analytics
+  Line: 571 in prepOrderItems()
+  Bug: pricePerUnit := price.Units / item.Quantity
+  Trigger: quantity = 0
+  Test: Checkout with quantity 0
+
+PANIC #2: Shipping tier calculation
+  Line: 806 in calculateShippingTier()
+  Bug: avgValue := total / len(items)
+  Trigger: Empty cart
+  Test: Checkout with empty cart
+
+PANIC #3: Fraud detection
+  Line: 604 in chargeCard()
+  Bug: log.Info(fraudCheck.RiskScore) // fraudCheck is nil
+  Trigger: Card ending in "0000"
+  Test: Use card 4532-0151-2345-0000
+
+PANIC #4: Address routing
+  Line: 849 in getAddressPrefix()
+  Bug: prefix := address.StreetAddress[:3]
+  Trigger: Empty or short address
+  Test: Leave street address blank
+================================================================================
+*/
