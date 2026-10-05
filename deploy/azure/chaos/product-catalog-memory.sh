@@ -18,13 +18,16 @@
 #                                                       every 20s, up to 20000); Ctrl-C to stop
 #   ./product-catalog-memory.sh loadgen <users>          set load-generator users (default demo: 5)
 #   ./product-catalog-memory.sh limit <Mi> [gomemlimit]  set product-catalog memory limit and Go's
-#                                                       soft limit (default demo: 32Mi / 16MiB)
+#                                                       soft limit (the case runs at 20Mi / 14MiB, as in
+#                                                       values-azure.yaml; leave it there so the only
+#                                                       change before an outage is catalog growth)
 #   ./product-catalog-memory.sh watch                   pod memory and restarts every 10s
 #   ./product-catalog-memory.sh clean                   delete every stub row
 #   ./product-catalog-memory.sh setup                   one-time live setup for the Add Product API: INSERT
 #                                                       grant (also kept for astronomy-db restarts) and the
 #                                                       X-Demo-Token on frontend + load-generator
-#   ./product-catalog-memory.sh reset                   clean, 5 load-generator users, 32Mi / 16MiB
+#   ./product-catalog-memory.sh reset                   clean, 5 load-generator users, and the 20Mi / 14MiB
+#                                                       limit if it drifted (no rollout when it is already set)
 #
 # Needs kubectl pointed at the otel-demo AKS cluster:
 #   az aks get-credentials -g otel-demo-rg -n otel-demo-aks
@@ -125,7 +128,7 @@ case "${1:-status}" in
   reset)
     psql_db "delete from catalog.products where id like 'STUB-%' or id like 'LOAD-%';"
     "$0" loadgen 5
-    "$0" limit 32 16
+    "$0" limit 20 14
     status
     ;;
   *) sed -n '2,/^$/p' "$0"; exit 1 ;;
