@@ -48,3 +48,9 @@ variable "memory_exhaustion_exclude_deployments" {
   type        = list(string)
   default     = ["valkey-cart", "astronomy-db"]
 }
+
+variable "alerts_enabled" {
+  description = "Turns every SolarWinds alert on or off; off while the chaos-case demos run on the Azure alerts."
+  type        = bool
+  default     = false
+}

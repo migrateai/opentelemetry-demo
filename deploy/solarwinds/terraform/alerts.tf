@@ -22,6 +22,7 @@ locals {
 # broken endpoint barely moves its service's overall error rate.
 resource "swo_alert" "service_errors" {
   name                  = "otel-demo: High Application Error Rate"
+  enabled               = var.alerts_enabled
   description           = "An endpoint failed at least ${var.error_rate_threshold_pct}% of its requests over 10 minutes."
   severity              = "WARNING"
   trigger_reset_actions = true
@@ -41,6 +42,7 @@ resource "swo_alert" "service_errors" {
 
 resource "swo_alert" "service_latency" {
   name                  = "otel-demo: High Application Latency"
+  enabled               = var.alerts_enabled
   description           = "An endpoint's average request duration was at least ${var.latency_threshold_seconds}s over 10 minutes."
   severity              = "WARNING"
   trigger_reset_actions = true
@@ -61,6 +63,7 @@ resource "swo_alert" "service_latency" {
 # A dead service cannot report its own errors, so silence is the signal.
 resource "swo_alert" "service_silent" {
   name                  = "otel-demo: Service Stopped Reporting"
+  enabled               = var.alerts_enabled
   description           = "A demo service sent no traced requests for 10 minutes (crashed or down)."
   severity              = "CRITICAL"
   trigger_reset_actions = true
@@ -84,6 +87,7 @@ resource "swo_alert" "service_silent" {
 
 resource "swo_alert" "pod_crashloop" {
   name                  = "otel-demo: Pod CrashLoopBackOff"
+  enabled               = var.alerts_enabled
   description           = "A container has been in CrashLoopBackOff for 5 minutes."
   severity              = "CRITICAL"
   trigger_reset_actions = true
@@ -109,6 +113,7 @@ resource "swo_alert" "pod_crashloop" {
 # reason keeps it visible after the restart.
 resource "swo_alert" "pod_oom_killed" {
   name                  = "otel-demo: Pod OOM Killed"
+  enabled               = var.alerts_enabled
   description           = "A container was last restarted because it ran out of memory (OOMKilled)."
   severity              = "CRITICAL"
   trigger_reset_actions = true
@@ -132,6 +137,7 @@ resource "swo_alert" "pod_oom_killed" {
 
 resource "swo_alert" "pod_memory_exhaustion" {
   name                  = "otel-demo: Pod Memory Exhaustion (>90% Limit)"
+  enabled               = var.alerts_enabled
   description           = "A container used more than 90% of its memory limit for 5 minutes."
   severity              = "WARNING"
   trigger_reset_actions = true
@@ -154,6 +160,7 @@ resource "swo_alert" "pod_memory_exhaustion" {
 
 resource "swo_alert" "pod_high_cpu" {
   name                  = "otel-demo: Pod High CPU Usage (>1 CPU)"
+  enabled               = var.alerts_enabled
   description           = "A pod used more than 1 CPU core on average for 5 minutes."
   severity              = "WARNING"
   trigger_reset_actions = true
@@ -174,6 +181,7 @@ resource "swo_alert" "pod_high_cpu" {
 # Pod phase 1 = Pending. MAX <= 1 means the pod stayed Pending the whole window.
 resource "swo_alert" "pod_pending" {
   name                  = "otel-demo: Pod Pending (>5m)"
+  enabled               = var.alerts_enabled
   description           = "A pod has been Pending (not scheduled or not started) for 5 minutes."
   severity              = "WARNING"
   trigger_reset_actions = true
@@ -194,6 +202,7 @@ resource "swo_alert" "pod_pending" {
 # A pod never ready for 10 minutes: failing health checks, stuck starts, crashes.
 resource "swo_alert" "pod_not_ready" {
   name                  = "otel-demo: Pod Not Ready"
+  enabled               = var.alerts_enabled
   description           = "A pod has not been ready for 10 minutes (crash loop or failing health check)."
   severity              = "CRITICAL"
   trigger_reset_actions = true
@@ -218,6 +227,7 @@ resource "swo_alert" "pod_not_ready" {
 
 resource "swo_alert" "node_not_ready" {
   name                  = "otel-demo: Node Not Ready"
+  enabled               = var.alerts_enabled
   description           = "A cluster node has not been Ready for 5 minutes."
   severity              = "CRITICAL"
   trigger_reset_actions = true
@@ -238,6 +248,7 @@ resource "swo_alert" "node_not_ready" {
 # CPU busy above 80% = idle below 20%.
 resource "swo_alert" "node_high_cpu" {
   name                  = "otel-demo: Node High CPU (>80%)"
+  enabled               = var.alerts_enabled
   description           = "A node's CPU was more than 80% busy on average for 10 minutes."
   severity              = "WARNING"
   trigger_reset_actions = true
@@ -260,6 +271,7 @@ resource "swo_alert" "node_high_cpu" {
 
 resource "swo_alert" "node_high_memory" {
   name                  = "otel-demo: Node High Memory (>85%)"
+  enabled               = var.alerts_enabled
   description           = "A node's memory was more than 85% used for 10 minutes."
   severity              = "WARNING"
   trigger_reset_actions = true
@@ -282,6 +294,7 @@ resource "swo_alert" "node_high_memory" {
 
 resource "swo_alert" "node_disk_pressure" {
   name                  = "otel-demo: Node Disk Pressure (>85%)"
+  enabled               = var.alerts_enabled
   description           = "A node filesystem was more than 85% full for 10 minutes."
   severity              = "WARNING"
   trigger_reset_actions = true
