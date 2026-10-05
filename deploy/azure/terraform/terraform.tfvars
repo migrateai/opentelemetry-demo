@@ -9,4 +9,4 @@ acr_name        = "oteldemo5352cb"
 aks_dns_prefix = "otel-demo--otel-demo-rg-88e59b"
 
 # Daily Log Analytics ingestion cap (GB). Raised from 1 so App Insights metrics fit a full day.
-log_analytics_daily_cap_gb = 3
+log_analytics_daily_cap_gb = 6
