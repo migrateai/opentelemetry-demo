@@ -56,6 +56,10 @@ export interface ListRecommendationsResponse {
   productIds: string[];
 }
 
+export interface AddProductRequest {
+  product: Product | undefined;
+}
+
 export interface Product {
   id: string;
   name: string;
@@ -881,6 +885,75 @@ export const ListRecommendationsResponse: MessageFns<ListRecommendationsResponse
   fromPartial<I extends Exact<DeepPartial<ListRecommendationsResponse>, I>>(object: I): ListRecommendationsResponse {
     const message = createBaseListRecommendationsResponse();
     message.productIds = object.productIds?.map((e) => e) || [];
+    return message;
+  },
+};
+
+function createBaseAddProductRequest(): AddProductRequest {
+  return { product: undefined };
+}
+
+export const AddProductRequest: MessageFns<AddProductRequest> = {
+  encode(message: AddProductRequest, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.product !== undefined) {
+      Product.encode(message.product, writer.uint32(10).fork()).join();
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): AddProductRequest {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const previousRecursionDepth = (reader as any).__tsProtoDecodeDepth ?? 0;
+    if (previousRecursionDepth >= 100) {
+      throw new globalThis.Error("protobuf decode recursion limit exceeded");
+    }
+    (reader as any).__tsProtoDecodeDepth = previousRecursionDepth + 1;
+    try {
+      const end = length === undefined ? reader.len : reader.pos + length;
+      const message = createBaseAddProductRequest();
+      while (reader.pos < end) {
+        const tag = reader.uint32();
+        switch (tag >>> 3) {
+          case 1: {
+            if (tag !== 10) {
+              break;
+            }
+
+            message.product = Product.decode(reader, reader.uint32());
+            continue;
+          }
+        }
+        if ((tag & 7) === 4 || tag === 0) {
+          break;
+        }
+        reader.skip(tag & 7);
+      }
+      return message;
+    } finally {
+      (reader as any).__tsProtoDecodeDepth = previousRecursionDepth;
+    }
+  },
+
+  fromJSON(object: any): AddProductRequest {
+    return { product: isSet(object.product) ? Product.fromJSON(object.product) : undefined };
+  },
+
+  toJSON(message: AddProductRequest): unknown {
+    const obj: any = {};
+    if (message.product !== undefined) {
+      obj.product = Product.toJSON(message.product);
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<AddProductRequest>, I>>(base?: I): AddProductRequest {
+    return AddProductRequest.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<AddProductRequest>, I>>(object: I): AddProductRequest {
+    const message = createBaseAddProductRequest();
+    message.product = (object.product !== undefined && object.product !== null)
+      ? Product.fromPartial(object.product)
+      : undefined;
     return message;
   },
 };
@@ -4063,12 +4136,22 @@ export const ProductCatalogServiceService = {
       Buffer.from(SearchProductsResponse.encode(value).finish()),
     responseDeserialize: (value: Buffer): SearchProductsResponse => SearchProductsResponse.decode(value),
   },
+  addProduct: {
+    path: "/oteldemo.ProductCatalogService/AddProduct" as const,
+    requestStream: false as const,
+    responseStream: false as const,
+    requestSerialize: (value: AddProductRequest): Buffer => Buffer.from(AddProductRequest.encode(value).finish()),
+    requestDeserialize: (value: Buffer): AddProductRequest => AddProductRequest.decode(value),
+    responseSerialize: (value: Product): Buffer => Buffer.from(Product.encode(value).finish()),
+    responseDeserialize: (value: Buffer): Product => Product.decode(value),
+  },
 } as const;
 
 export interface ProductCatalogServiceServer extends UntypedServiceImplementation {
   listProducts: handleUnaryCall<Empty, ListProductsResponse>;
   getProduct: handleUnaryCall<GetProductRequest, Product>;
   searchProducts: handleUnaryCall<SearchProductsRequest, SearchProductsResponse>;
+  addProduct: handleUnaryCall<AddProductRequest, Product>;
 }
 
 export interface ProductCatalogServiceClient extends Client {
@@ -4116,6 +4199,21 @@ export interface ProductCatalogServiceClient extends Client {
     metadata: Metadata,
     options: Partial<CallOptions>,
     callback: (error: ServiceError | null, response: SearchProductsResponse) => void,
+  ): ClientUnaryCall;
+  addProduct(
+    request: AddProductRequest,
+    callback: (error: ServiceError | null, response: Product) => void,
+  ): ClientUnaryCall;
+  addProduct(
+    request: AddProductRequest,
+    metadata: Metadata,
+    callback: (error: ServiceError | null, response: Product) => void,
+  ): ClientUnaryCall;
+  addProduct(
+    request: AddProductRequest,
+    metadata: Metadata,
+    options: Partial<CallOptions>,
+    callback: (error: ServiceError | null, response: Product) => void,
   ): ClientUnaryCall;
 }
 

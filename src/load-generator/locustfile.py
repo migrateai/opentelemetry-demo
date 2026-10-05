@@ -9,7 +9,7 @@ import random
 import uuid
 import logging
 
-from locust import HttpUser, task, between
+from locust import HttpUser, task, between, events
 from locust_plugins.users.playwright import PlaywrightUser, pw, PageWithRetry, event
 
 from opentelemetry import context, baggage, trace
@@ -133,6 +133,14 @@ agent_prompts = [
 agent_endpoint = os.environ.get("AGENT_ENDPOINT", "agent")
 agent_port = os.environ.get("AGENT_PORT", "8010")
 
+@events.init_command_line_parser.add_listener
+def _(parser):
+    # Catalog load test dials, editable on the Locust UI start form. 0 adds nothing, so the
+    # autostarted traffic never grows the catalog.
+    parser.add_argument("--add-products", type=int, default=0, help="Products each user adds per add-products task")
+    parser.add_argument("--add-product-desc-kb", type=int, default=2, help="Description size of each added product, in KB")
+
+
 class WebsiteUser(HttpUser):
     weight = int(os.environ.get("LOCUST_HTTP_USER_WEIGHT", "9"))
     wait_time = between(1, 10)
@@ -140,6 +148,25 @@ class WebsiteUser(HttpUser):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.tracer = trace.get_tracer(__name__)
+
+    @task(5)
+    def add_products(self):
+        count = self.environment.parsed_options.add_products
+        description = "Load test product added through POST /api/products. " * (
+            self.environment.parsed_options.add_product_desc_kb * 1024 // 54)
+        for _ in range(count):
+            self.client.post(
+                "/api/products",
+                json={
+                    "id": f"LOAD-{uuid.uuid4()}",
+                    "name": "[LOAD] Catalog load test product",
+                    "description": description,
+                    "picture": "TheCometBook.jpg",
+                    "priceUsd": {"currencyCode": "USD", "units": 10, "nanos": 0},
+                    "categories": ["loadtest"],
+                },
+                headers={"X-Demo-Token": os.environ.get("DEMO_ADMIN_TOKEN", "")},
+            )
 
     @task(1)
     def index(self):
