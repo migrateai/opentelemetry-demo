@@ -8,6 +8,11 @@ variable "online_dev_subscription_id" {
   type        = string
 }
 
+variable "management_subscription_id" {
+  description = "Platform management subscription (central Log Analytics workspace)."
+  type        = string
+}
+
 variable "corp_subscription_id" {
   description = "Subscription placed in the Corp landing zone."
   type        = string

@@ -4,6 +4,7 @@
 #   Tenant Root Group
 #   └── otel-demo-alz
 #       ├── platform
+#       │   └── management → lz-platform-management (central Log Analytics + Activity Logs)
 #       └── landingzones
 #           ├── corp    → lz-corp-prod          (sample resources below)
 #           └── online  → lz-online-prod        (the otel-demo AKS app)
@@ -39,6 +40,12 @@ provider "azurerm" {
   subscription_id = var.online_dev_subscription_id
 }
 
+provider "azurerm" {
+  alias = "management"
+  features {}
+  subscription_id = var.management_subscription_id
+}
+
 data "azurerm_client_config" "current" {}
 
 # ---------------------------------------------------------------------------
@@ -54,6 +61,12 @@ resource "azurerm_management_group" "platform" {
   name                       = "otel-demo-platform"
   display_name               = "Platform"
   parent_management_group_id = azurerm_management_group.alz.id
+}
+
+resource "azurerm_management_group" "management" {
+  name                       = "otel-demo-management"
+  display_name               = "Management"
+  parent_management_group_id = azurerm_management_group.platform.id
 }
 
 resource "azurerm_management_group" "landingzones" {
@@ -82,6 +95,11 @@ resource "azurerm_management_group_subscription_association" "corp" {
 resource "azurerm_management_group_subscription_association" "online" {
   management_group_id = azurerm_management_group.online.id
   subscription_id     = "/subscriptions/${var.online_subscription_id}"
+}
+
+resource "azurerm_management_group_subscription_association" "management" {
+  management_group_id = azurerm_management_group.management.id
+  subscription_id     = "/subscriptions/${var.management_subscription_id}"
 }
 
 resource "azurerm_management_group_subscription_association" "online_dev" {
@@ -203,5 +221,56 @@ resource "azurerm_linux_web_app" "online_dev" {
   tags                = var.tags
   site_config {
     always_on = false # not available on the free tier
+  }
+}
+
+# ---------------------------------------------------------------------------
+# Platform management: central Log Analytics workspace receiving every subscription's
+# Activity Log, as in the Azure Landing Zones reference. Capped to stay near free.
+# ---------------------------------------------------------------------------
+
+resource "azurerm_resource_group" "management" {
+  provider = azurerm.management
+  name     = "platform-management-rg"
+  location = var.location
+  tags     = var.tags
+}
+
+resource "azurerm_log_analytics_workspace" "central" {
+  provider            = azurerm.management
+  name                = "platform-central-logs"
+  resource_group_name = azurerm_resource_group.management.name
+  location            = var.location
+  sku                 = "PerGB2018"
+  retention_in_days   = 30
+  daily_quota_gb      = 0.1
+  tags                = var.tags
+}
+
+resource "azurerm_monitor_diagnostic_setting" "activity_log" {
+  for_each = {
+    management = var.management_subscription_id
+    corp       = var.corp_subscription_id
+    online     = var.online_subscription_id
+    online_dev = var.online_dev_subscription_id
+  }
+  name                       = "activity-log-to-central"
+  target_resource_id         = "/subscriptions/${each.value}"
+  log_analytics_workspace_id = azurerm_log_analytics_workspace.central.id
+
+  enabled_log {
+    category = "Administrative"
+  }
+  enabled_log {
+    category = "Security"
+  }
+  enabled_log {
+    category = "ServiceHealth"
+  }
+  enabled_log {
+    category = "Alert"
+  }
+  enabled_log {
+    category = "Policy"
   }
 }
