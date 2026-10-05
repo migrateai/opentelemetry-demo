@@ -13,7 +13,7 @@ locals {
       severity    = 1
       metric      = "kube_pod_status_ready"
       aggregation = "Average"
-      threshold   = 0.5
+      threshold   = 0.2
       dimensions = [
         { name = "namespace", operator = "Include", values = [var.alert_namespace] },
         { name = "pod", operator = "StartsWith", values = ["product-catalog-"] },
