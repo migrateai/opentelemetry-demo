@@ -439,6 +439,38 @@ func (p *productCatalog) SearchProducts(ctx context.Context, req *pb.SearchProdu
 	return &pb.SearchProductsResponse{Results: result}, nil
 }
 
+func (p *productCatalog) AddProduct(ctx context.Context, req *pb.AddProductRequest) (*pb.Product, error) {
+	span := trace.SpanFromContext(ctx)
+	product := req.GetProduct()
+	if product.GetId() == "" || product.GetName() == "" {
+		return nil, status.Error(codes.InvalidArgument, "product id and name are required")
+	}
+	span.SetAttributes(attribute.String("demo.product.id", product.GetId()))
+
+	price := product.GetPriceUsd()
+	currencyCode := price.GetCurrencyCode()
+	if currencyCode == "" {
+		currencyCode = "USD"
+	}
+	_, err := db.ExecContext(ctx, `
+		INSERT INTO catalog.products (id, name, description, picture, price_currency_code, price_units, price_nanos, categories)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+	`, product.GetId(), product.GetName(), product.GetDescription(), product.GetPicture(),
+		currencyCode, price.GetUnits(), price.GetNanos(), strings.Join(product.GetCategories(), ","))
+	if err != nil {
+		span.SetStatus(otelcodes.Error, err.Error())
+		return nil, status.Errorf(codes.Internal, "failed to add product: %v", err)
+	}
+
+	logger.LogAttrs(
+		ctx,
+		slog.LevelInfo, "Product Added",
+		slog.String("demo.product.name", product.GetName()),
+		slog.String("demo.product.id", product.GetId()),
+	)
+	return product, nil
+}
+
 func (p *productCatalog) checkProductFailure(ctx context.Context, id string) bool {
 	return flags.ProductCatalogFailure.Value(ctx, openfeature.NewTargetlessEvaluationContext(map[string]any{"product_id": id}))
 }

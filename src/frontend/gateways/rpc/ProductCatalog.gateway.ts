@@ -19,6 +19,11 @@ const ProductCatalogGateway = () => ({
       client.getProduct({ id }, (error, response) => (error ? reject(error) : resolve(response)))
     );
   },
+  addProduct(product: Product) {
+    return new Promise<Product>((resolve, reject) =>
+      client.addProduct({ product }, (error, response) => (error ? reject(error) : resolve(response)))
+    );
+  },
 });
 
 export default ProductCatalogGateway();

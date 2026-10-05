@@ -72,6 +72,11 @@ service ProductCatalogService {
     rpc ListProducts(Empty) returns (ListProductsResponse) {}
     rpc GetProduct(GetProductRequest) returns (Product) {}
     rpc SearchProducts(SearchProductsRequest) returns (SearchProductsResponse) {}
+    rpc AddProduct(AddProductRequest) returns (Product) {}
+}
+
+message AddProductRequest {
+    Product product = 1;
 }
 
 message Product {

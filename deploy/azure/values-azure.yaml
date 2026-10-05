@@ -24,6 +24,24 @@ components:
       # Headless-browser users are heavy for a single node.
       - name: LOCUST_BROWSER_TRAFFIC_ENABLED
         value: "false"
+      # Catalog load test (chaos case 1): sent as X-Demo-Token on POST /api/products.
+      - name: DEMO_ADMIN_TOKEN
+        value: catalog-load-test
+
+  frontend:
+    envOverrides:
+      # Enables POST /api/products for requests carrying this X-Demo-Token.
+      - name: DEMO_ADMIN_TOKEN
+        value: catalog-load-test
+
+  product-catalog:
+    # Tight limit for chaos case 1: a growing catalog OOMs it quickly.
+    resources:
+      limits:
+        memory: 20Mi
+    envOverrides:
+      - name: GOMEMLIMIT
+        value: 14MiB
 
 jaeger:
   enabled: false

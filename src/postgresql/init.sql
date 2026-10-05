@@ -78,6 +78,8 @@ CREATE TABLE catalog.products (
 -- productCatalogLockContention fault-injection flag; the service otherwise
 -- only reads from this schema.
 GRANT SELECT, UPDATE ON ALL TABLES IN SCHEMA catalog TO astronomy_user;
+-- INSERT backs the AddProduct RPC used by the catalog load test.
+GRANT INSERT ON catalog.products TO astronomy_user;
 
 -- Product Catalog Service: add product data
 INSERT INTO catalog.products (id, name, description, picture, price_currency_code, price_units, price_nanos, categories)

@@ -21,6 +21,9 @@
 #                                                       soft limit (default demo: 32Mi / 16MiB)
 #   ./product-catalog-memory.sh watch                   pod memory and restarts every 10s
 #   ./product-catalog-memory.sh clean                   delete every stub row
+#   ./product-catalog-memory.sh setup                   one-time live setup for the Add Product API: INSERT
+#                                                       grant (also kept for astronomy-db restarts) and the
+#                                                       X-Demo-Token on frontend + load-generator
 #   ./product-catalog-memory.sh reset                   clean, 5 load-generator users, 32Mi / 16MiB
 #
 # Needs kubectl pointed at the otel-demo AKS cluster:
@@ -47,7 +50,7 @@ stub_count() {
 }
 
 status() {
-  echo "catalog.products: $(psql_db "select count(*) from catalog.products;") rows ($(stub_count) stub)"
+  echo "catalog.products: $(psql_db "select count(*) from catalog.products;") rows ($(stub_count) stub, $(psql_db "select count(*) from catalog.products where id like 'LOAD-%';") added via POST /api/products)"
   local limit memory
   limit=$(kubectl -n "$NAMESPACE" get deploy product-catalog -o jsonpath='{.spec.template.spec.containers[0].resources.limits.memory}')
   # metrics-server has no sample for a container that keeps getting killed
@@ -105,11 +108,22 @@ case "${1:-status}" in
     ;;
   watch) while true; do echo "--- $(date +%H:%M:%S)"; status; sleep 10; done ;;
   clean)
-    psql_db "delete from catalog.products where id like 'STUB-%';"
+    psql_db "delete from catalog.products where id like 'STUB-%' or id like 'LOAD-%';"
     status
     ;;
+  setup)
+    grant="GRANT INSERT ON catalog.products TO astronomy_user;"
+    psql_db "$grant"
+    # astronomy-db has no data volume and re-runs this init script on every restart.
+    init=$(kubectl -n "$NAMESPACE" get cm postgresql-init -o jsonpath='{.data.init\.sql}')
+    if [[ "$init" != *"$grant"* ]]; then
+      kubectl -n "$NAMESPACE" create cm postgresql-init --from-literal=init.sql="$init"$'\n'"$grant" \
+        --dry-run=client -o yaml | kubectl -n "$NAMESPACE" apply -f -
+    fi
+    kubectl -n "$NAMESPACE" set env deploy/frontend deploy/load-generator DEMO_ADMIN_TOKEN=catalog-load-test
+    ;;
   reset)
-    psql_db "delete from catalog.products where id like 'STUB-%';"
+    psql_db "delete from catalog.products where id like 'STUB-%' or id like 'LOAD-%';"
     "$0" loadgen 5
     "$0" limit 32 16
     status
