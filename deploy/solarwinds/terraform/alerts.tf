@@ -33,7 +33,7 @@ resource "swo_alert" "service_errors" {
       metric_name         = "composite.trace.service.traced_error_rate"
       aggregation_type    = "AVG"
       threshold           = ">=${var.error_rate_threshold_pct}"
-      duration            = "10m"
+      duration            = var.error_rate_duration
       group_by_metric_tag = ["service.name", "sw.transaction"]
       include_tags        = [local.demo_services]
     },
@@ -215,6 +215,32 @@ resource "swo_alert" "pod_not_ready" {
       threshold           = "<1"
       duration            = "10m"
       group_by_metric_tag = ["k8s.pod.name"]
+      include_tags        = [local.this_cluster, local.demo_namespace]
+    },
+  ]
+}
+
+# A deployment down most of the window. Grouped by k8s.deployment.name (stable),
+# so it catches outages where pods are evicted and replaced under NEW names -
+# e.g. ephemeral-storage / disk-fill eviction - which the per-pod rules above
+# miss (each short-lived pod has a different name, so a pod-name-grouped window
+# never accumulates). AVG <= 0.5 = available for at most half the window; a
+# normal rollout only dips for seconds, so its average stays well above 0.5.
+resource "swo_alert" "deployment_unavailable" {
+  name                  = "otel-demo: Deployment Unavailable"
+  enabled               = var.alerts_enabled
+  description           = "A deployment had at most half an available replica on average for 5 minutes (pods crashing, evicted, or failing to start)."
+  severity              = "CRITICAL"
+  trigger_reset_actions = true
+  notification_actions  = local.notify_slack
+
+  conditions = [
+    {
+      metric_name         = "k8s.deployment.available"
+      aggregation_type    = "AVG"
+      threshold           = "<=0.5"
+      duration            = "5m"
+      group_by_metric_tag = ["k8s.deployment.name"]
       include_tags        = [local.this_cluster, local.demo_namespace]
     },
   ]

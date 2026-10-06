@@ -43,6 +43,12 @@ variable "latency_threshold_seconds" {
   default     = 0.5
 }
 
+variable "error_rate_duration" {
+  description = "How long an endpoint must stay above the error-rate threshold before the error alert fires."
+  type        = string
+  default     = "10m"
+}
+
 variable "memory_exhaustion_exclude_deployments" {
   description = "Deployments that normally run near their memory limit (cache and database), left out of the memory alert."
   type        = list(string)
